@@ -35,7 +35,7 @@ impl<'n, L: Add<R, Output = O> + 'n + Copy, R: Copy, O: 'n> Node<&'n (L, R)> for
 pub struct DynamicAddNode;
 
 // Alias for a dynamic type
-pub type Dynamic<'a> = alloc::boxed::Box<dyn dyn_any::DynAny<'a>>;
+pub type Dynamic<'a> = alloc::boxed::Box<dyn dyn_any::DynAny<'a> + 'a>;
 
 /// Resolves the dynamic types for a dynamic node.
 ///

@@ -344,6 +344,7 @@ dependencies = [
 name = "graph-craft"
 version = "0.1.0"
 dependencies = [
+ "borrow_stack",
  "dyn-any",
  "graphene-core",
  "graphene-std",
@@ -383,6 +384,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
+ "rand_chacha",
  "syn",
 ]
 

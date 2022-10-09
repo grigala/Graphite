@@ -57,6 +57,17 @@ where
 		self
 	}
 }
+/// If we store a `Box<dyn RefNode>` in the stack then the origional DynAnyNode is dropped (because it is not stored by reference)
+/// This trait is implemented directly by `DynAnyNode` so this means the borrow stack will hold by value
+pub trait DynAnyNodeTrait<'n> {
+	fn eval_ref_dispatch(&'n self, input: Any<'n>) -> Any<'n>;
+}
+impl<'n, I: StaticType, O: 'n + StaticType, Node: RefNode<I, Output = O> + Copy + 'n> DynAnyNodeTrait<'n> for DynAnyNode<'n, Node, I> {
+	fn eval_ref_dispatch(&'n self, input: Any<'n>) -> Any<'n> {
+		self.eval_ref(input)
+	}
+}
+
 use graphene_core::ops::Dynamic;
 pub struct BoxedComposition<'a, Second> {
 	pub first: Box<dyn Node<(), Output = Dynamic<'a>>>,

@@ -36,9 +36,9 @@ fn merge_ids(a: u64, b: u64) -> u64 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocumentNode {
-	name: String,
-	inputs: Vec<NodeInput>,
-	implementation: DocumentNodeImplementation,
+	pub name: String,
+	pub inputs: Vec<NodeInput>,
+	pub implementation: DocumentNodeImplementation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,9 +65,9 @@ pub enum DocumentNodeImplementation {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct NodeNetwork {
-	inputs: Vec<NodeId>,
-	output: NodeId,
-	nodes: HashMap<NodeId, DocumentNode>,
+	pub inputs: Vec<NodeId>,
+	pub output: NodeId,
+	pub nodes: HashMap<NodeId, DocumentNode>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

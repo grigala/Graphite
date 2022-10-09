@@ -10,3 +10,4 @@ graphene-core = { path = "../gcore", features = ["async", "std"] }
 graphene-std = { path = "../gstd" }
 dyn-any = { path = "../../libraries/dyn-any" }
 num-traits = "0.2"
+borrow_stack = { path = "../borrow_stack" }
