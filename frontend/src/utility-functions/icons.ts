@@ -258,7 +258,7 @@ const TWO_TONE_24PX = {
 } as const;
 
 // All icons
-const ICON_LIST = {
+export const ICON_LIST = {
 	...GRAPHICS,
 	...SOLID_12PX,
 	...SOLID_16PX,
@@ -271,7 +271,8 @@ export const ICONS: IconDefinitionType<typeof ICON_LIST> = ICON_LIST;
 export const ICON_COMPONENTS = Object.fromEntries(Object.entries(ICONS).map(([name, data]) => [name, data.component]));
 
 export type IconName = keyof typeof ICONS;
-export type IconSize = undefined | 12 | 16 | 24 | 32;
+export const iconSizes = [12, 16, 24, 32] as const;
+export type IconSize = undefined | typeof iconSizes[number];
 
 // The following helper type declarations allow us to avoid manually maintaining the `IconName` type declaration as a string union paralleling the keys of the
 // icon definitions. It lets TypeScript do that for us. Our goal is to define the big key-value pair of icons by constraining its values, but inferring its keys.

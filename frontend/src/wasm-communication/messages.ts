@@ -1,16 +1,11 @@
 /* eslint-disable max-classes-per-file */
 
-import { Transform, Type, plainToClass } from "class-transformer";
+import { z } from "zod";
 
-import { type IconName, type IconSize } from "@/utility-functions/icons";
-import { type WasmEditorInstance, type WasmRawInstance } from "@/wasm-communication/editor";
+import { ICON_LIST, type IconName, iconSizes } from "@/utility-functions/icons";
+import { getWasmInstance } from "@/wasm-communication/editor";
 
 import type MenuList from "@/components/floating-menus/MenuList.vue";
-
-export class JsMessage {
-	// The marker provides a way to check if an object is a sub-class constructor for a jsMessage.
-	static readonly jsMessageMarker = true;
-}
 
 // ============================================================================
 // Add additional classes below to replicate Rust's `FrontendMessage`s and data structures.
@@ -21,185 +16,161 @@ export class JsMessage {
 // for details about how to transform the JSON from wasm-bindgen into classes.
 // ============================================================================
 
-export class UpdateNodeGraphVisibility extends JsMessage {
-	readonly visible!: boolean;
-}
+export const UpdateNodeGraphVisibility = z.object({
+	visible: z.boolean(),
+});
 
-export class UpdateOpenDocumentsList extends JsMessage {
-	@Type(() => FrontendDocumentDetails)
-	readonly openDocuments!: FrontendDocumentDetails[];
-}
+export const DocumentDetails = z.object({
+	name: z.string(),
+	isSaved: z.boolean(),
+});
+
+export const FrontendDocumentDetails = z
+	.object({
+		id: z.bigint(),
+	})
+	.merge(DocumentDetails);
+
+export const UpdateOpenDocumentsList = z.object({
+	openDocuments: FrontendDocumentDetails.array(),
+});
 
 // Allows the auto save system to use a string for the id rather than a BigInt.
 // IndexedDb does not allow for BigInts as primary keys.
 // TypeScript does not allow subclasses to change the type of class variables in subclasses.
 // It is an abstract class to point out that it should not be instantiated directly.
-export abstract class DocumentDetails {
-	readonly name!: string;
-
-	readonly isSaved!: boolean;
-
-	readonly id!: bigint | string;
-
-	get displayName(): string {
-		return `${this.name}${this.isSaved ? "" : "*"}`;
-	}
+export function getDisplayName(documentDetails: z.infer<typeof DocumentDetails>): string {
+	return `${documentDetails.name}${documentDetails.isSaved ? "" : "*"}`;
 }
 
-export class FrontendDocumentDetails extends DocumentDetails {
-	readonly id!: bigint;
-}
+export const IndexedDbDocumentDetails = z
+	.object({
+		id: z.bigint().transform((val) => val.toString()),
+	})
+	.merge(DocumentDetails);
 
-export class TriggerIndexedDbWriteDocument extends JsMessage {
-	document!: string;
+export const TriggerIndexedDbWriteDocument = z.object({
+	document: z.string(),
+	details: IndexedDbDocumentDetails,
+	version: z.string(),
+});
 
-	@Type(() => IndexedDbDocumentDetails)
-	details!: IndexedDbDocumentDetails;
-
-	version!: string;
-}
-
-export class IndexedDbDocumentDetails extends DocumentDetails {
-	@Transform(({ value }: { value: bigint }) => value.toString())
-	id!: string;
-}
-
-export class TriggerIndexedDbRemoveDocument extends JsMessage {
+export const TriggerIndexedDbRemoveDocument = z.object({
 	// Use a string since IndexedDB can not use BigInts for keys
-	@Transform(({ value }: { value: bigint }) => value.toString())
-	documentId!: string;
-}
-
-export class UpdateInputHints extends JsMessage {
-	@Type(() => HintInfo)
-	readonly hintData!: HintData;
-}
-
-export type HintData = HintGroup[];
-
-export type HintGroup = HintInfo[];
-
-export class HintInfo {
-	readonly keyGroups!: KeysGroup[];
-
-	readonly keyGroupsMac!: KeysGroup[] | undefined;
-
-	readonly mouse!: MouseMotion | undefined;
-
-	readonly label!: string;
-
-	readonly plus!: boolean;
-}
+	documentId: z.bigint().transform((val) => val.toString()),
+});
 
 // Rust enum `Key`
-export type KeyRaw = string;
+export const KeyRaw = z.string();
 // Serde converts a Rust `Key` enum variant into this format (via a custom serializer) with both the `Key` variant name (called `RawKey` in TS) and the localized `label` for the key
-export type Key = { key: KeyRaw; label: string };
-export type KeysGroup = Key[];
-export type ActionKeys = { keys: KeysGroup };
+export const Key = z.object({ key: KeyRaw, label: z.string() });
+export const KeysGroup = Key.array();
+export const ActionKeys = z.object({ keys: KeysGroup });
 
-export type MouseMotion = string;
+export const MouseMotion = z.string();
 
-export type RGBA = {
-	r: number;
-	g: number;
-	b: number;
-	a: number;
-};
+export const HintInfo = z.object({
+	keyGroups: KeysGroup.array(),
+	keyGroupsMac: z.optional(KeysGroup.array()),
+	mouse: MouseMotion.optional(),
+	label: z.string(),
+	plus: z.boolean(),
+});
 
-export type HSVA = {
-	h: number;
-	s: number;
-	v: number;
-	a: number;
-};
+export const HintGroup = HintInfo.array();
 
-const To255Scale = Transform(({ value }: { value: number }) => value * 255);
-export class Color {
-	@To255Scale
-	readonly red!: number;
+export const HintData = HintGroup.array();
 
-	@To255Scale
-	readonly green!: number;
+export const UpdateInputHints = z.object({
+	hintData: HintData,
+});
 
-	@To255Scale
-	readonly blue!: number;
+export const RGBA = z.object({
+	r: z.number(),
+	g: z.number(),
+	b: z.number(),
+	a: z.number(),
+});
 
-	readonly alpha!: number;
+export const HSVA = z.object({
+	h: z.number(),
+	s: z.number(),
+	v: z.number(),
+	a: z.number(),
+});
 
-	toRgba(): RGBA {
-		return { r: this.red, g: this.green, b: this.blue, a: this.alpha };
-	}
+const To255Scale = z.number().transform((val) => val * 255);
 
-	toRgbaCSS(): string {
-		const { r, g, b, a } = this.toRgba();
-		return `rgba(${r}, ${g}, ${b}, ${a})`;
-	}
+export const Color = z.object({
+	red: To255Scale,
+	green: To255Scale,
+	blue: To255Scale,
+	alpha: z.number(),
+});
+
+export function colorToRgba(color: z.infer<typeof Color>): z.infer<typeof RGBA> {
+	return { r: color.red, g: color.green, b: color.blue, a: color.alpha };
 }
 
-export class UpdateActiveDocument extends JsMessage {
-	readonly documentId!: bigint;
+export function colorToRgbaCSS(color: z.infer<typeof Color>): string {
+	const { r, g, b, a } = colorToRgba(color);
+	return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-export class DisplayDialogPanic extends JsMessage {
-	readonly panicInfo!: string;
+export const UpdateActiveDocument = z.object({
+	documentId: z.bigint(),
+});
 
-	readonly header!: string;
+export const DisplayDialogPanic = z.object({
+	panicInfo: z.string(),
+	header: z.string(),
+	description: z.string(),
+});
 
-	readonly description!: string;
-}
+const iconNameParser = z.enum(Object.keys(ICON_LIST) as [IconName]);
 
-export class DisplayDialog extends JsMessage {
-	readonly icon!: IconName;
-}
+export const DisplayDialog = z.object({
+	icon: iconNameParser,
+});
 
-export class UpdateDocumentArtwork extends JsMessage {
-	readonly svg!: string;
-}
+export const UpdateDocumentArtwork = z.object({
+	svg: z.string(),
+});
 
-export class UpdateDocumentOverlays extends JsMessage {
-	readonly svg!: string;
-}
+export const UpdateDocumentOverlays = z.object({
+	svg: z.string(),
+});
 
-export class UpdateDocumentArtboards extends JsMessage {
-	readonly svg!: string;
-}
+export const UpdateDocumentArtboards = z.object({
+	svg: z.string(),
+});
 
-const TupleToVec2 = Transform(({ value }: { value: [number, number] | undefined }) => (value === undefined ? undefined : { x: value[0], y: value[1] }));
-const BigIntTupleToVec2 = Transform(({ value }: { value: [bigint, bigint] | undefined }) => (value === undefined ? undefined : { x: Number(value[0]), y: Number(value[1]) }));
+const TupleToVec2 = z.tuple([z.number(), z.number()]).transform(([x, y]) => ({ x, y }));
+const BigIntTupleToVec2 = z.tuple([z.bigint(), z.bigint()]).transform(([x, y]) => ({ x: Number(x), y: Number(y) }));
 
-export type XY = { x: number; y: number };
+export const XY = { x: z.number(), y: z.number() };
 
-export class UpdateDocumentScrollbars extends JsMessage {
-	@TupleToVec2
-	readonly position!: XY;
+export const UpdateDocumentScrollbars = z.object({
+	position: TupleToVec2,
+	size: TupleToVec2,
+	multiplier: TupleToVec2,
+});
 
-	@TupleToVec2
-	readonly size!: XY;
+export const UpdateDocumentRulers = z.object({
+	origin: TupleToVec2,
+	spacing: z.number(),
+	interval: z.number(),
+});
 
-	@TupleToVec2
-	readonly multiplier!: XY;
-}
+export const UpdateEyedropperSamplingState = z.object({
+	mousePosition: TupleToVec2.optional(),
 
-export class UpdateDocumentRulers extends JsMessage {
-	@TupleToVec2
-	readonly origin!: XY;
+	primaryColor: z.string(),
 
-	readonly spacing!: number;
+	secondaryColor: z.string(),
 
-	readonly interval!: number;
-}
-
-export class UpdateEyedropperSamplingState extends JsMessage {
-	@TupleToVec2
-	readonly mousePosition!: XY | undefined;
-
-	readonly primaryColor!: string;
-
-	readonly secondaryColor!: string;
-
-	readonly setColorChoice!: "Primary" | "Secondary" | undefined;
-}
+	setColorChoice: z.enum(["Primary", "Secondary"]).optional(),
+});
 
 const mouseCursorIconCSSNames = {
 	None: "none",
@@ -217,123 +188,100 @@ const mouseCursorIconCSSNames = {
 export type MouseCursor = keyof typeof mouseCursorIconCSSNames;
 export type MouseCursorIcon = typeof mouseCursorIconCSSNames[MouseCursor];
 
-export class UpdateMouseCursor extends JsMessage {
-	@Transform(({ value }: { value: MouseCursor }) => mouseCursorIconCSSNames[value] || "default")
-	readonly cursor!: MouseCursorIcon;
-}
+export const UpdateMouseCursor = z.object({
+	cursor: z.enum(Object.keys(mouseCursorIconCSSNames) as [MouseCursor]),
+});
 
-export class TriggerFileDownload extends JsMessage {
-	readonly document!: string;
+export const TriggerFileDownload = z.object({
+	document: z.string(),
+	name: z.string(),
+});
 
-	readonly name!: string;
-}
+export const TriggerLoadAutoSaveDocuments = z.object({});
 
-export class TriggerLoadAutoSaveDocuments extends JsMessage {}
+export const TriggerLoadPreferences = z.object({});
 
-export class TriggerLoadPreferences extends JsMessage {}
+export const TriggerOpenDocument = z.object({});
 
-export class TriggerOpenDocument extends JsMessage {}
+export const TriggerImport = z.object({});
 
-export class TriggerImport extends JsMessage {}
+export const TriggerPaste = z.object({});
 
-export class TriggerPaste extends JsMessage {}
+export const TriggerRasterDownload = z.object({
+	svg: z.string(),
+	name: z.string(),
+	mime: z.string(),
+	size: TupleToVec2,
+});
 
-export class TriggerRasterDownload extends JsMessage {
-	readonly svg!: string;
+export const TriggerImaginateCheckServerStatus = z.object({
+	hostname: z.string(),
+});
 
-	readonly name!: string;
+export const ImaginateBaseImage = z.object({
+	svg: z.string(),
+	size: z.tuple([z.number(), z.number()]),
+});
 
-	readonly mime!: string;
+export const ImaginateGenerationParameters = z.object({
+	seed: z.number(),
+	samples: z.number(),
+	samplingMethod: z.string(),
+	denoisingStrength: z.number().optional(),
+	cfgScale: z.number(),
+	prompt: z.string(),
+	negativePrompt: z.string(),
+	resolution: BigIntTupleToVec2,
+	restoreFaces: z.boolean(),
+	tiling: z.boolean(),
+});
 
-	@TupleToVec2
-	readonly size!: XY;
-}
+export const TriggerImaginateGenerate = z.object({
+	parameters: ImaginateGenerationParameters,
+	baseImage: ImaginateBaseImage.optional(),
+	hostname: z.string(),
+	refreshFrequency: z.number(),
+	documentId: z.bigint(),
+	layerPath: z.any().transform((val) => val as BigUint64Array),
+});
 
-export class TriggerImaginateCheckServerStatus extends JsMessage {
-	readonly hostname!: string;
-}
+export const TriggerImaginateTerminate = z.object({
+	documentId: z.bigint(),
+	layerPath: z.any().transform((val) => val as BigUint64Array),
+	hostname: z.string(),
+});
 
-export class TriggerImaginateGenerate extends JsMessage {
-	@Type(() => ImaginateGenerationParameters)
-	readonly parameters!: ImaginateGenerationParameters;
+export const TriggerRefreshBoundsOfViewports = z.object({});
 
-	@Type(() => ImaginateBaseImage)
-	readonly baseImage!: ImaginateBaseImage | undefined;
+export const TriggerRevokeBlobUrl = z.object({
+	url: z.string(),
+});
 
-	readonly hostname!: string;
+export const TriggerSavePreferences = z.object({
+	preferences: z.record(z.unknown()),
+});
 
-	readonly refreshFrequency!: number;
+export const DocumentChanged = z.object({});
 
-	readonly documentId!: bigint;
-
-	readonly layerPath!: BigUint64Array;
-}
-
-export class ImaginateBaseImage {
-	readonly svg!: string;
-
-	readonly size!: [number, number];
-}
-
-export class ImaginateGenerationParameters {
-	readonly seed!: number;
-
-	readonly samples!: number;
-
-	readonly samplingMethod!: string;
-
-	readonly denoisingStrength!: number | undefined;
-
-	readonly cfgScale!: number;
-
-	readonly prompt!: string;
-
-	readonly negativePrompt!: string;
-
-	@BigIntTupleToVec2
-	readonly resolution!: XY;
-
-	readonly restoreFaces!: boolean;
-
-	readonly tiling!: boolean;
-}
-
-export class TriggerImaginateTerminate extends JsMessage {
-	readonly documentId!: bigint;
-
-	readonly layerPath!: BigUint64Array;
-
-	readonly hostname!: string;
-}
-
-export class TriggerRefreshBoundsOfViewports extends JsMessage {}
-
-export class TriggerRevokeBlobUrl extends JsMessage {
-	readonly url!: string;
-}
-
-export class TriggerSavePreferences extends JsMessage {
-	readonly preferences!: Record<string, unknown>;
-}
-
-export class DocumentChanged extends JsMessage {}
-
-export class UpdateDocumentLayerTreeStructure extends JsMessage {
-	constructor(readonly layerId: bigint, readonly children: UpdateDocumentLayerTreeStructure[]) {
-		super();
-	}
-}
-
-type DataBuffer = {
-	pointer: bigint;
-	length: bigint;
+type UpdateDocumentLayerTreeStructureReturn = {
+	layerId: bigint;
+	children: UpdateDocumentLayerTreeStructureReturn[];
 };
 
-export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: DataBuffer }, wasm: WasmRawInstance): UpdateDocumentLayerTreeStructure {
+const DataBuffer = z.object({
+	pointer: z.bigint(),
+	length: z.bigint(),
+});
+
+const UpdateDocumentLayerTreeStructure = z.object({ dataBuffer: DataBuffer }).transform((value) => newUpdateDocumentLayerTreeStructure(value));
+
+export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: z.infer<typeof DataBuffer> }): UpdateDocumentLayerTreeStructureReturn {
 	const pointerNum = Number(input.dataBuffer.pointer);
 	const lengthNum = Number(input.dataBuffer.length);
 
-	const wasmMemoryBuffer = wasm.wasmMemory().buffer;
+	// TODO: Fix hacky way that this message works
+	const wasm = getWasmInstance();
+	const wasmMemoryBuffer = wasm.wasm_memory().buffer;
 
 	// Decode the folder structure encoding
 	const encoding = new DataView(wasmMemoryBuffer, pointerNum, lengthNum);
@@ -346,7 +294,7 @@ export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: DataBuf
 	const layerIdsSection = new DataView(wasmMemoryBuffer, pointerNum + 8 + structureSectionLength * 8);
 
 	let layersEncountered = 0;
-	let currentFolder = new UpdateDocumentLayerTreeStructure(BigInt(-1), []);
+	let currentFolder: z.infer<typeof UpdateDocumentLayerTreeStructure> = { layerId: BigInt(-1), children: [] };
 	const currentFolderStack = [currentFolder];
 
 	for (let i = 0; i < structureSectionLength; i += 1) {
@@ -361,7 +309,7 @@ export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: DataBuf
 			const layerId = layerIdsSection.getBigUint64(layersEncountered * 8, true);
 			layersEncountered += 1;
 
-			const childLayer = new UpdateDocumentLayerTreeStructure(layerId, []);
+			const childLayer: z.infer<typeof UpdateDocumentLayerTreeStructure> = { layerId, children: [] };
 			currentFolder.children.push(childLayer);
 		}
 
@@ -383,64 +331,58 @@ export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: DataBuf
 	return currentFolder;
 }
 
-export class DisplayEditableTextbox extends JsMessage {
-	readonly text!: string;
+export const DisplayEditableTextbox = z.object({
+	text: z.string(),
+	lineWidth: z.number().optional(),
+	fontSize: z.number(),
+	color: Color,
+});
 
-	readonly lineWidth!: undefined | number;
+export const ImaginateImageData = z.object({
+	path: z.any().transform((val) => val as BigUint64Array),
+	mime: z.string(),
+	imageData: z.any().transform((val) => val as Uint8Array),
+});
 
-	readonly fontSize!: number;
+export const UpdateImageData = z.object({
+	documentId: z.bigint(),
+	imageData: ImaginateImageData.array(),
+});
 
-	@Type(() => Color)
-	readonly color!: Color;
-}
+export const DisplayRemoveEditableTextbox = z.object({});
 
-export class UpdateImageData extends JsMessage {
-	readonly documentId!: bigint;
+const emptyStringUndefined = z.string().transform((value) => (value === "" ? undefined : value));
 
-	@Type(() => ImaginateImageData)
-	readonly imageData!: ImaginateImageData[];
-}
+export const LayerType = z.enum(["Imaginate", "Folder", "Image", "Shape", "Text"]);
 
-export class DisplayRemoveEditableTextbox extends JsMessage {}
+export const LayerMetadata = z.object({
+	expanded: z.boolean(),
+	selected: z.boolean(),
+});
 
-export class UpdateDocumentLayerDetails extends JsMessage {
-	@Type(() => LayerPanelEntry)
-	readonly data!: LayerPanelEntry;
-}
+export const LayerPanelEntry = z.object({
+	name: z.string(),
+	tooltip: emptyStringUndefined,
+	visible: z.boolean(),
+	layerType: LayerType,
+	path: z
+		.bigint()
+		.array()
+		.transform((arr) => new BigUint64Array(arr)),
+	layerMetadata: LayerMetadata,
+	thumbnail: z.string(),
+});
 
-export class LayerPanelEntry {
-	name!: string;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-
-	visible!: boolean;
-
-	layerType!: LayerType;
-
-	@Transform(({ value }: { value: bigint[] }) => new BigUint64Array(value))
-	path!: BigUint64Array;
-
-	@Type(() => LayerMetadata)
-	layerMetadata!: LayerMetadata;
-
-	thumbnail!: string;
-}
-
-export class LayerMetadata {
-	expanded!: boolean;
-
-	selected!: boolean;
-}
-
-export type LayerType = "Imaginate" | "Folder" | "Image" | "Shape" | "Text";
+export const UpdateDocumentLayerDetails = z.object({
+	data: LayerPanelEntry,
+});
 
 export type LayerTypeData = {
 	name: string;
 	icon: IconName;
 };
 
-export function layerTypeData(layerType: LayerType): LayerTypeData | undefined {
+export function layerTypeData(layerType: z.infer<typeof LayerType>): LayerTypeData | undefined {
 	const entries: Record<string, LayerTypeData> = {
 		Imaginate: { name: "Imaginate", icon: "NodeImaginate" },
 		Folder: { name: "Folder", icon: "NodeFolder" },
@@ -452,87 +394,64 @@ export function layerTypeData(layerType: LayerType): LayerTypeData | undefined {
 	return entries[layerType];
 }
 
-export class ImaginateImageData {
-	readonly path!: BigUint64Array;
+export const DisplayDialogDismiss = z.object({});
 
-	readonly mime!: string;
+export const Font = z.object({
+	fontFamily: z.string(),
+	fontStyle: z.string(),
+});
 
-	readonly imageData!: Uint8Array;
-}
+export const TriggerFontLoad = z.object({
+	font: Font,
+	isDefault: z.boolean(),
+});
 
-export class DisplayDialogDismiss extends JsMessage {}
+export const TriggerVisitLink = z.object({
+	url: z.string(),
+});
 
-export class Font {
-	fontFamily!: string;
+export const TriggerTextCommit = z.object({});
 
-	fontStyle!: string;
-}
+export const TriggerTextCopy = z.object({
+	copyText: z.string(),
+});
 
-export class TriggerFontLoad extends JsMessage {
-	@Type(() => Font)
-	font!: Font;
+export const TriggerAboutGraphiteLocalizedCommitDate = z.object({
+	commitDate: z.string(),
+});
 
-	isDefault!: boolean;
-}
+export const TriggerViewportResize = z.object({});
 
-export class TriggerVisitLink extends JsMessage {
-	url!: string;
-}
+const CheckboxInput = z.object({
+	checked: z.boolean(),
+	// type does not exist but will get runtime error. This is because union to tuple is not a valid conversion
+	icon: z.enum(Object.keys(ICON_LIST) as [string]),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("CheckboxInput"),
+});
 
-export class TriggerTextCommit extends JsMessage {}
+export const ColorInput = z.object({
+	value: z.string().optional(),
+	label: z.string().optional(),
+	noTransparency: z.boolean(),
+	disabled: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("ColorInput"),
+});
 
-export class TriggerTextCopy extends JsMessage {
-	readonly copyText!: string;
-}
+const MenuEntryCommon = z.object({
+	label: z.string(),
+	icon: iconNameParser.optional(),
+	shortcut: ActionKeys.optional(),
+});
 
-export class TriggerAboutGraphiteLocalizedCommitDate extends JsMessage {
-	readonly commitDate!: string;
-}
-
-export class TriggerViewportResize extends JsMessage {}
-
-// WIDGET PROPS
-
-export abstract class WidgetProps {
-	kind!: string;
-}
-
-export class CheckboxInput extends WidgetProps {
-	checked!: boolean;
-
-	icon!: IconName;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class ColorInput extends WidgetProps {
-	value!: string | undefined;
-
-	label!: string | undefined;
-
-	noTransparency!: boolean;
-
-	disabled!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-type MenuEntryCommon = {
-	label: string;
-	icon?: IconName;
-	shortcut?: ActionKeys;
-};
-
-// The entry in the expanded menu or a sub-menu as received from the Rust backend
-export type MenuBarEntry = MenuEntryCommon & {
-	action: Widget;
-	children?: MenuBarEntry[][];
+export type MenuBarEntry = z.infer<typeof MenuEntryCommon> & {
+	action: typeof Widget;
+	children: MenuBarEntry;
 };
 
 // An entry in the all-encompassing MenuList component which defines all types of menus ranging from `MenuBarInput` to `DropdownInput` widgets
-export type MenuListEntry = MenuEntryCommon & {
+export type MenuListEntry = {
 	action?: () => void;
 	children?: MenuListEntry[][];
 
@@ -544,163 +463,134 @@ export type MenuListEntry = MenuEntryCommon & {
 	ref?: InstanceType<typeof MenuList>;
 };
 
-export class DropdownInput extends WidgetProps {
-	entries!: MenuListEntry[][];
+export const MenuListEntry: z.ZodType<MenuListEntry> = z.lazy(() =>
+	z.object({
+		action: z.optional(z.function().args().returns(z.void())),
+		children: MenuListEntry.array().array(),
+		shortcutRequiresLock: z.boolean().optional(),
+		value: z.string().optional(),
+		disabled: z.boolean().optional(),
+		tooltip: z.string().optional(),
+		font: z.optional(z.any().transform((val) => val as URL)),
+		ref: z.optional(z.any().transform((val) => val as InstanceType<typeof MenuList>)),
+	})
+);
 
-	selectedIndex!: number | undefined;
+export const DropdownInput = z.object({
+	entries: MenuListEntry.array().array(),
+	selectedIndex: z.number().optional(),
+	drawIcon: z.boolean(),
+	interactive: z.boolean(),
+	disabled: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("DropdownInput"),
+});
 
-	drawIcon!: boolean;
+export const FontInput = z.object({
+	fontFamily: z.string(),
+	fontStyle: z.string(),
+	isStyle: z.boolean(),
+	disabled: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("FontInput"),
+});
 
-	interactive!: boolean;
+export const IconButton = z.object({
+	icon: iconNameParser,
+	// TODO: FIXME
+	size: z.enum(iconSizes.map((n) => z.literal(n)) as any).optional(),
+	active: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("IconButton"),
+});
 
-	disabled!: boolean;
+export const IconLabel = z.object({
+	icon: iconNameParser,
+	tooltip: emptyStringUndefined,
+	kind: z.literal("IconLabel"),
+});
 
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
+export const NumberInput = z.object({
+	label: z.string().optional(),
+	value: z.number().optional(),
+	min: z.number().optional(),
+	max: z.number().optional(),
+	isInteger: z.boolean(),
+	displayDecimalPlaces: z.number(),
+	unit: z.string(),
+	unitIsHiddenWhenEditing: z.boolean(),
+	incrementBehavior: z.enum(["Add", "Multiply", "Callback", "None"]),
+	incrementFactor: z.number(),
+	disabled: z.boolean(),
+	minWidth: z.number(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("NumberInput"),
+});
 
-export class FontInput extends WidgetProps {
-	fontFamily!: string;
+export const OptionalInput = z.object({
+	checked: z.boolean(),
+	icon: iconNameParser,
+	tooltip: emptyStringUndefined,
+	kind: z.literal("OptionalInput"),
+});
 
-	fontStyle!: string;
-
-	isStyle!: boolean;
-
-	disabled!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class IconButton extends WidgetProps {
-	icon!: IconName;
-
-	size!: IconSize;
-
-	active!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class IconLabel extends WidgetProps {
-	icon!: IconName;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export type IncrementBehavior = "Add" | "Multiply" | "Callback" | "None";
-
-export class NumberInput extends WidgetProps {
-	label!: string | undefined;
-
-	value!: number | undefined;
-
-	min!: number | undefined;
-
-	max!: number | undefined;
-
-	isInteger!: boolean;
-
-	displayDecimalPlaces!: number;
-
-	unit!: string;
-
-	unitIsHiddenWhenEditing!: boolean;
-
-	incrementBehavior!: IncrementBehavior;
-
-	incrementFactor!: number;
-
-	disabled!: boolean;
-
-	minWidth!: number;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class OptionalInput extends WidgetProps {
-	checked!: boolean;
-
-	icon!: IconName;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class PopoverButton extends WidgetProps {
-	icon!: string | undefined;
-
+export const PopoverButton = z.object({
+	icon: z.string().optional(),
 	// Body
-	header!: string;
+	header: z.string(),
+	text: z.string(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("PopoverButton"),
+});
 
-	text!: string;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export type RadioEntryData = {
-	value?: string;
-	label?: string;
-	icon?: IconName;
-	tooltip?: string;
-
+export const RadioEntryData = z.object({
+	value: z.string().optional(),
+	label: z.string().optional(),
+	icon: iconNameParser,
+	tooltip: z.string(),
 	// Callbacks
-	action?: () => void;
-};
-export type RadioEntries = RadioEntryData[];
+	action: z.function().args().returns(z.void()),
+});
+export const RadioEntries = RadioEntryData.array();
 
-export class RadioInput extends WidgetProps {
-	entries!: RadioEntries;
+export const RadioInput = z.object({
+	entries: RadioEntries,
+	selectedIndex: z.number(),
+	kind: z.literal("RadioInput"),
+});
 
-	selectedIndex!: number;
-}
+export const SeparatorDirection = z.enum(["Horizontal", "Vertical"]);
+export const SeparatorType = z.enum(["Related", "Unrelated", "Section", "List"]);
 
-export type SeparatorDirection = "Horizontal" | "Vertical";
-export type SeparatorType = "Related" | "Unrelated" | "Section" | "List";
+export const Separator = z.object({
+	direction: SeparatorDirection,
+	type: SeparatorType,
+	kind: z.literal("Separator"),
+});
 
-export class Separator extends WidgetProps {
-	direction!: SeparatorDirection;
+export const SwatchPairInput = z.object({
+	primary: Color,
+	secondary: Color,
+	kind: z.literal("SwatchPairInput"),
+});
 
-	type!: SeparatorType;
-}
+export const TextAreaInput = z.object({
+	value: z.string(),
+	label: z.string().optional(),
+	disabled: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("TextAreaInput"),
+});
 
-export class SwatchPairInput extends WidgetProps {
-	@Type(() => Color)
-	primary!: Color;
-
-	@Type(() => Color)
-	secondary!: Color;
-}
-
-export class TextAreaInput extends WidgetProps {
-	value!: string;
-
-	label!: string | undefined;
-
-	disabled!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export class TextButton extends WidgetProps {
-	label!: string;
-
-	icon!: string | undefined;
-
-	emphasized!: boolean;
-
-	minWidth!: number;
-
-	disabled!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
+export const TextButton = z.object({
+	label: z.string(),
+	icon: iconNameParser,
+	emphasized: z.boolean(),
+	minWidth: z.number(),
+	disabled: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("TextButton"),
+});
 
 export type TextButtonWidget = {
 	tooltip?: string;
@@ -720,81 +610,58 @@ export type TextButtonWidget = {
 	};
 };
 
-export class TextInput extends WidgetProps {
-	value!: string;
+export const TextInput = z.object({
+	value: z.string(),
+	label: z.string().optional(),
+	disabled: z.boolean(),
+	minWidth: z.number(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("TextInput"),
+});
 
-	label!: string | undefined;
+const TextLabel = z.object({
+	value: z.string(),
+	bold: z.boolean(),
+	italic: z.boolean(),
+	minWidth: z.number(),
+	multiline: z.boolean(),
+	tooltip: emptyStringUndefined,
+	kind: z.literal("TextLabel"),
+});
 
-	disabled!: boolean;
+export const PivotPosition = z.enum(["None", "TopLeft", "TopCenter", "TopRight", "CenterLeft", "Center", "CenterRight", "BottomLeft", "BottomCenter", "BottomRight"]);
 
-	minWidth!: number;
+export const PivotAssist = z.object({
+	position: PivotPosition,
+	kind: z.literal("PivotAssist"),
+});
 
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
+export const Widget = z.object({
+	props: z.discriminatedUnion("kind", [
+		CheckboxInput,
+		ColorInput,
+		FontInput,
+		IconButton,
+		IconLabel,
+		NumberInput,
+		OptionalInput,
+		PopoverButton,
+		RadioInput,
+		Separator,
+		SwatchPairInput,
+		TextAreaInput,
+		TextButton,
+		TextInput,
+		TextLabel,
+		PivotAssist,
+		DropdownInput,
+	]),
 
-export class TextLabel extends WidgetProps {
-	// Body
-	value!: string;
-
-	// Props
-	bold!: boolean;
-
-	italic!: boolean;
-
-	tableAlign!: boolean;
-
-	minWidth!: number;
-
-	multiline!: boolean;
-
-	@Transform(({ value }: { value: string }) => (value.length > 0 ? value : undefined))
-	tooltip!: string | undefined;
-}
-
-export type PivotPosition = "None" | "TopLeft" | "TopCenter" | "TopRight" | "CenterLeft" | "Center" | "CenterRight" | "BottomLeft" | "BottomCenter" | "BottomRight";
-
-export class PivotAssist extends WidgetProps {
-	position!: PivotPosition;
-}
-
-// WIDGET
-
-const widgetSubTypes = [
-	{ value: CheckboxInput, name: "CheckboxInput" },
-	{ value: ColorInput, name: "ColorInput" },
-	{ value: DropdownInput, name: "DropdownInput" },
-	{ value: FontInput, name: "FontInput" },
-	{ value: IconButton, name: "IconButton" },
-	{ value: IconLabel, name: "IconLabel" },
-	{ value: NumberInput, name: "NumberInput" },
-	{ value: OptionalInput, name: "OptionalInput" },
-	{ value: PopoverButton, name: "PopoverButton" },
-	{ value: RadioInput, name: "RadioInput" },
-	{ value: Separator, name: "Separator" },
-	{ value: SwatchPairInput, name: "SwatchPairInput" },
-	{ value: TextAreaInput, name: "TextAreaInput" },
-	{ value: TextButton, name: "TextButton" },
-	{ value: TextInput, name: "TextInput" },
-	{ value: TextLabel, name: "TextLabel" },
-	{ value: PivotAssist, name: "PivotAssist" },
-];
-export type WidgetPropsSet = InstanceType<typeof widgetSubTypes[number]["value"]>;
-
-export class Widget {
-	constructor(props: WidgetPropsSet, widgetId: bigint) {
-		this.props = props;
-		this.widgetId = widgetId;
-	}
-
-	@Type(() => WidgetProps, { discriminator: { property: "kind", subTypes: widgetSubTypes }, keepDiscriminatorProperty: true })
-	props!: WidgetPropsSet;
-
-	widgetId!: bigint;
-}
+	widgetId: z.bigint(),
+});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hoistWidgetHolders(widgetHolders: any[]): Widget[] {
+function hoistWidgetHolders(widgetHolders: any[]): z.infer<typeof Widget>[] {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return widgetHolders.map((widgetHolder: any) => {
 		const kind = Object.keys(widgetHolder.widget)[0];
@@ -803,16 +670,20 @@ function hoistWidgetHolders(widgetHolders: any[]): Widget[] {
 
 		const { widgetId } = widgetHolder;
 
-		return plainToClass(Widget, { props, widgetId });
+		return Widget.parse({ props, widgetId });
 	});
 }
 
 // WIDGET LAYOUT
 
-export type WidgetLayout = {
+type WidgetLayout = {
 	layoutTarget: unknown;
 	layout: LayoutGroup[];
 };
+export const WidgetLayout = z.object({
+	layoutTarget: z.unknown(),
+	layout: z.any().transform((value) => createWidgetLayout(value)),
+});
 
 export function defaultWidgetLayout(): WidgetLayout {
 	return {
@@ -823,12 +694,12 @@ export function defaultWidgetLayout(): WidgetLayout {
 
 export type LayoutGroup = WidgetRow | WidgetColumn | WidgetSection;
 
-export type WidgetColumn = { columnWidgets: Widget[] };
+export type WidgetColumn = { columnWidgets: z.infer<typeof Widget>[] };
 export function isWidgetColumn(layoutColumn: LayoutGroup): layoutColumn is WidgetColumn {
 	return Boolean((layoutColumn as WidgetColumn).columnWidgets);
 }
 
-export type WidgetRow = { rowWidgets: Widget[] };
+export type WidgetRow = { rowWidgets: z.infer<typeof Widget>[] };
 export function isWidgetRow(layoutRow: LayoutGroup): layoutRow is WidgetRow {
 	return Boolean((layoutRow as WidgetRow).rowWidgets);
 }
@@ -868,97 +739,10 @@ function createWidgetLayout(widgetLayout: any[]): LayoutGroup[] {
 	});
 }
 
-// WIDGET LAYOUTS
-
-export class UpdateDialogDetails extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateDocumentModeLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateToolOptionsLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateDocumentBarLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateToolShelfLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateWorkingColorsLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdatePropertyPanelOptionsLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdatePropertyPanelSectionsLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateLayerTreeOptionsLayout extends JsMessage implements WidgetLayout {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createWidgetLayout(value))
-	layout!: LayoutGroup[];
-}
-
-export class UpdateMenuBarLayout extends JsMessage {
-	layoutTarget!: unknown;
-
-	// TODO: Replace `any` with correct typing
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	@Transform(({ value }: { value: any }) => createMenuLayout(value))
-	layout!: MenuBarEntry[];
-}
+export const UpdateMenuBarLayout = z.object({
+	layoutTarget: z.unknown(),
+	layout: z.any().transform((value) => createMenuLayout(value)),
+});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMenuLayout(menuBarEntry: any[]): MenuBarEntry[] {
@@ -978,12 +762,7 @@ function createMenuLayoutRecursive(children: any[][]): MenuBarEntry[][] {
 	);
 }
 
-// `any` is used since the type of the object should be known from the Rust side
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type JSMessageFactory = (data: any, wasm: WasmRawInstance, instance: WasmEditorInstance) => JsMessage;
-type MessageMaker = typeof JsMessage | JSMessageFactory;
-
-export const messageMakers: Record<string, MessageMaker> = {
+export const messageMakers = {
 	DisplayDialog,
 	DisplayDialogDismiss,
 	DisplayDialogPanic,
@@ -1011,28 +790,28 @@ export const messageMakers: Record<string, MessageMaker> = {
 	TriggerViewportResize,
 	TriggerVisitLink,
 	UpdateActiveDocument,
-	UpdateDialogDetails,
+	UpdateDialogDetails: WidgetLayout,
 	UpdateDocumentArtboards,
 	UpdateDocumentArtwork,
-	UpdateDocumentBarLayout,
+	UpdateDocumentBarLayout: WidgetLayout,
 	UpdateDocumentLayerDetails,
-	UpdateDocumentLayerTreeStructure: newUpdateDocumentLayerTreeStructure,
-	UpdateDocumentModeLayout,
+	UpdateDocumentLayerTreeStructure,
+	UpdateDocumentModeLayout: WidgetLayout,
 	UpdateDocumentOverlays,
 	UpdateDocumentRulers,
 	UpdateEyedropperSamplingState,
 	UpdateDocumentScrollbars,
 	UpdateImageData,
 	UpdateInputHints,
-	UpdateLayerTreeOptionsLayout,
+	UpdateLayerTreeOptionsLayout: WidgetLayout,
 	UpdateMenuBarLayout,
 	UpdateMouseCursor,
 	UpdateNodeGraphVisibility,
 	UpdateOpenDocumentsList,
-	UpdatePropertyPanelOptionsLayout,
-	UpdatePropertyPanelSectionsLayout,
-	UpdateToolOptionsLayout,
-	UpdateToolShelfLayout,
-	UpdateWorkingColorsLayout,
+	UpdatePropertyPanelOptionsLayout: WidgetLayout,
+	UpdatePropertyPanelSectionsLayout: WidgetLayout,
+	UpdateToolOptionsLayout: WidgetLayout,
+	UpdateToolShelfLayout: WidgetLayout,
+	UpdateWorkingColorsLayout: WidgetLayout,
 } as const;
 export type JsMessageType = keyof typeof messageMakers;
