@@ -118,6 +118,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { hsvaToRgba, rgbaToHsva } from "@/utility-functions/color";
 import { clamp } from "@/utility-functions/math";
 import { type RGBA } from "@/wasm-communication/messages";
@@ -133,7 +135,7 @@ type ColorPickerState = "Idle" | "MoveHue" | "MoveOpacity" | "MoveSaturation";
 export default defineComponent({
 	emits: ["update:color"],
 	props: {
-		color: { type: Object as PropType<RGBA>, required: true },
+		color: { type: Object as PropType<z.infer<typeof RGBA>>, required: true },
 	},
 	data() {
 		return {

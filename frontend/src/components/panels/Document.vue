@@ -224,19 +224,12 @@
 <script lang="ts">
 import { defineComponent, nextTick } from "vue";
 
+import type { z } from "zod";
+
 import { textInputCleanup } from "@/utility-functions/keyboard-entry";
 import { rasterizeSVGCanvas } from "@/utility-functions/rasterization";
-import {
-	defaultWidgetLayout,
-	type DisplayEditableTextbox,
-	type MouseCursorIcon,
-	type UpdateDocumentBarLayout,
-	type UpdateDocumentModeLayout,
-	type UpdateToolOptionsLayout,
-	type UpdateToolShelfLayout,
-	type UpdateWorkingColorsLayout,
-	type XY,
-} from "@/wasm-communication/messages";
+import type { WidgetLayout as WidgetLayoutMessage, DisplayEditableTextbox } from "@/wasm-communication/messages";
+import { defaultWidgetLayout, type MouseCursorIcon, type XY, colorToRgbaCSS } from "@/wasm-communication/messages";
 
 import EyedropperPreview, { ZOOM_WINDOW_DIMENSIONS } from "@/components/floating-menus/EyedropperPreview.vue";
 import LayoutCol from "@/components/layout/LayoutCol.vue";
@@ -456,7 +449,7 @@ export default defineComponent({
 			const textCleaned = textInputCleanup(this.textInput.innerText);
 			this.editor.instance.onChangeText(textCleaned);
 		},
-		displayEditableTextbox(displayEditableTextbox: DisplayEditableTextbox) {
+		displayEditableTextbox(displayEditableTextbox: z.infer<typeof DisplayEditableTextbox>) {
 			this.textInput = document.createElement("DIV") as HTMLDivElement;
 
 			if (displayEditableTextbox.text === "") this.textInput.textContent = "";
@@ -466,7 +459,7 @@ export default defineComponent({
 			this.textInput.style.width = displayEditableTextbox.lineWidth ? `${displayEditableTextbox.lineWidth}px` : "max-content";
 			this.textInput.style.height = "auto";
 			this.textInput.style.fontSize = `${displayEditableTextbox.fontSize}px`;
-			this.textInput.style.color = displayEditableTextbox.color.toRgbaCSS();
+			this.textInput.style.color = colorToRgbaCSS(displayEditableTextbox.color);
 
 			this.textInput.oninput = (): void => {
 				if (!this.textInput) return;
@@ -478,19 +471,19 @@ export default defineComponent({
 			window.dispatchEvent(new CustomEvent("modifyinputfield", { detail: undefined }));
 		},
 		// Update layouts
-		updateDocumentModeLayout(updateDocumentModeLayout: UpdateDocumentModeLayout) {
+		updateDocumentModeLayout(updateDocumentModeLayout: z.infer<typeof WidgetLayoutMessage>) {
 			this.documentModeLayout = updateDocumentModeLayout;
 		},
-		updateToolOptionsLayout(updateToolOptionsLayout: UpdateToolOptionsLayout) {
+		updateToolOptionsLayout(updateToolOptionsLayout: z.infer<typeof WidgetLayoutMessage>) {
 			this.toolOptionsLayout = updateToolOptionsLayout;
 		},
-		updateDocumentBarLayout(updateDocumentBarLayout: UpdateDocumentBarLayout) {
+		updateDocumentBarLayout(updateDocumentBarLayout: z.infer<typeof WidgetLayoutMessage>) {
 			this.documentBarLayout = updateDocumentBarLayout;
 		},
-		updateToolShelfLayout(updateToolShelfLayout: UpdateToolShelfLayout) {
+		updateToolShelfLayout(updateToolShelfLayout: z.infer<typeof WidgetLayoutMessage>) {
 			this.toolShelfLayout = updateToolShelfLayout;
 		},
-		updateWorkingColorsLayout(updateWorkingColorsLayout: UpdateWorkingColorsLayout) {
+		updateWorkingColorsLayout(updateWorkingColorsLayout: z.infer<typeof WidgetLayoutMessage>) {
 			this.workingColorsLayout = updateWorkingColorsLayout;
 		},
 		// Resize elements to render the new viewport size

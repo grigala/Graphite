@@ -48,8 +48,10 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
+import type { z } from "zod";
+
 import { platformIsMac } from "@/utility-functions/platform";
-import { type HintData, type HintInfo, type KeysGroup, UpdateInputHints } from "@/wasm-communication/messages";
+import { type HintData, type HintInfo, type KeysGroup } from "@/wasm-communication/messages";
 
 import LayoutRow from "@/components/layout/LayoutRow.vue";
 import Separator from "@/components/widgets/labels/Separator.vue";
@@ -59,17 +61,17 @@ export default defineComponent({
 	inject: ["editor"],
 	data() {
 		return {
-			hintData: [] as HintData,
+			hintData: [] as z.infer<typeof HintData>,
 		};
 	},
 	methods: {
-		inputKeysForPlatform(hint: HintInfo): KeysGroup[] {
+		inputKeysForPlatform(hint: z.infer<typeof HintInfo>): z.infer<typeof KeysGroup>[] {
 			if (platformIsMac() && hint.keyGroupsMac) return hint.keyGroupsMac;
 			return hint.keyGroups;
 		},
 	},
 	mounted() {
-		this.editor.subscriptions.subscribeJsMessage(UpdateInputHints, (updateInputHints) => {
+		this.editor.subscriptions.subscribeJsMessage("UpdateInputHints", (updateInputHints) => {
 			this.hintData = updateInputHints.hintData;
 		});
 	},

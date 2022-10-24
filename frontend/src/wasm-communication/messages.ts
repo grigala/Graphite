@@ -34,15 +34,6 @@ export const FrontendDocumentDetails = z
 export const UpdateOpenDocumentsList = z.object({
 	openDocuments: FrontendDocumentDetails.array(),
 });
-
-// Allows the auto save system to use a string for the id rather than a BigInt.
-// IndexedDb does not allow for BigInts as primary keys.
-// TypeScript does not allow subclasses to change the type of class variables in subclasses.
-// It is an abstract class to point out that it should not be instantiated directly.
-export function getDisplayName(documentDetails: z.infer<typeof DocumentDetails>): string {
-	return `${documentDetails.name}${documentDetails.isSaved ? "" : "*"}`;
-}
-
 export const IndexedDbDocumentDetails = z
 	.object({
 		id: z.bigint().transform((val) => val.toString()),
@@ -148,7 +139,7 @@ export const UpdateDocumentArtboards = z.object({
 const TupleToVec2 = z.tuple([z.number(), z.number()]).transform(([x, y]) => ({ x, y }));
 const BigIntTupleToVec2 = z.tuple([z.bigint(), z.bigint()]).transform(([x, y]) => ({ x: Number(x), y: Number(y) }));
 
-export const XY = { x: z.number(), y: z.number() };
+export type XY = { x: number; y: number };
 
 export const UpdateDocumentScrollbars = z.object({
 	position: TupleToVec2,
@@ -173,6 +164,7 @@ export const UpdateEyedropperSamplingState = z.object({
 });
 
 const mouseCursorIconCSSNames = {
+	Default: "default",
 	None: "none",
 	ZoomIn: "zoom-in",
 	ZoomOut: "zoom-out",
@@ -273,7 +265,7 @@ const DataBuffer = z.object({
 	length: z.bigint(),
 });
 
-const UpdateDocumentLayerTreeStructure = z.object({ dataBuffer: DataBuffer }).transform((value) => newUpdateDocumentLayerTreeStructure(value));
+export const UpdateDocumentLayerTreeStructure = z.object({ dataBuffer: DataBuffer }).transform((value) => newUpdateDocumentLayerTreeStructure(value));
 
 export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: z.infer<typeof DataBuffer> }): UpdateDocumentLayerTreeStructureReturn {
 	const pointerNum = Number(input.dataBuffer.pointer);
@@ -281,7 +273,7 @@ export function newUpdateDocumentLayerTreeStructure(input: { dataBuffer: z.infer
 
 	// TODO: Fix hacky way that this message works
 	const wasm = getWasmInstance();
-	const wasmMemoryBuffer = wasm.wasm_memory().buffer;
+	const wasmMemoryBuffer = wasm.wasmMemory().buffer;
 
 	// Decode the folder structure encoding
 	const encoding = new DataView(wasmMemoryBuffer, pointerNum, lengthNum);
@@ -446,8 +438,8 @@ const MenuEntryCommon = z.object({
 });
 
 export type MenuBarEntry = z.infer<typeof MenuEntryCommon> & {
-	action: typeof Widget;
-	children: MenuBarEntry;
+	action: z.infer<typeof Widget>;
+	children: MenuBarEntry[][];
 };
 
 // An entry in the all-encompassing MenuList component which defines all types of menus ranging from `MenuBarInput` to `DropdownInput` widgets
@@ -455,6 +447,7 @@ export type MenuListEntry = {
 	action?: () => void;
 	children?: MenuListEntry[][];
 
+	label: string;
 	shortcutRequiresLock?: boolean;
 	value?: string;
 	disabled?: boolean;
@@ -469,6 +462,7 @@ export const MenuListEntry: z.ZodType<MenuListEntry> = z.lazy(() =>
 		children: MenuListEntry.array().array(),
 		shortcutRequiresLock: z.boolean().optional(),
 		value: z.string().optional(),
+		label: z.string(),
 		disabled: z.boolean().optional(),
 		tooltip: z.string().optional(),
 		font: z.optional(z.any().transform((val) => val as URL)),
@@ -510,6 +504,8 @@ export const IconLabel = z.object({
 	kind: z.literal("IconLabel"),
 });
 
+export const IncrementBehavior = z.enum(["Add", "Multiply", "Callback", "None"]);
+
 export const NumberInput = z.object({
 	label: z.string().optional(),
 	value: z.number().optional(),
@@ -519,7 +515,7 @@ export const NumberInput = z.object({
 	displayDecimalPlaces: z.number(),
 	unit: z.string(),
 	unitIsHiddenWhenEditing: z.boolean(),
-	incrementBehavior: z.enum(["Add", "Multiply", "Callback", "None"]),
+	incrementBehavior: IncrementBehavior,
 	incrementFactor: z.number(),
 	disabled: z.boolean(),
 	minWidth: z.number(),
@@ -584,7 +580,7 @@ export const TextAreaInput = z.object({
 
 export const TextButton = z.object({
 	label: z.string(),
-	icon: iconNameParser,
+	icon: iconNameParser.optional(),
 	emphasized: z.boolean(),
 	minWidth: z.number(),
 	disabled: z.boolean(),
@@ -625,8 +621,13 @@ const TextLabel = z.object({
 	italic: z.boolean(),
 	minWidth: z.number(),
 	multiline: z.boolean(),
+	tableAlign: z.boolean(),
 	tooltip: emptyStringUndefined,
 	kind: z.literal("TextLabel"),
+});
+
+const InvisibleStandinInput = z.object({
+	kind: z.literal("InvisibleStandinInput"),
 });
 
 export const PivotPosition = z.enum(["None", "TopLeft", "TopCenter", "TopRight", "CenterLeft", "Center", "CenterRight", "BottomLeft", "BottomCenter", "BottomRight"]);
@@ -637,25 +638,10 @@ export const PivotAssist = z.object({
 });
 
 export const Widget = z.object({
-	props: z.discriminatedUnion("kind", [
-		CheckboxInput,
-		ColorInput,
-		FontInput,
-		IconButton,
-		IconLabel,
-		NumberInput,
-		OptionalInput,
-		PopoverButton,
-		RadioInput,
-		Separator,
-		SwatchPairInput,
-		TextAreaInput,
-		TextButton,
-		TextInput,
-		TextLabel,
-		PivotAssist,
-		DropdownInput,
-	]),
+	props: z.preprocess((val) => {
+		console.log(val);
+		return val;
+	}, z.discriminatedUnion("kind", [CheckboxInput, ColorInput, FontInput, IconButton, IconLabel, NumberInput, OptionalInput, PopoverButton, RadioInput, Separator, SwatchPairInput, TextAreaInput, TextButton, TextInput, TextLabel, PivotAssist, DropdownInput, InvisibleStandinInput])),
 
 	widgetId: z.bigint(),
 });
@@ -676,10 +662,7 @@ function hoistWidgetHolders(widgetHolders: any[]): z.infer<typeof Widget>[] {
 
 // WIDGET LAYOUT
 
-type WidgetLayout = {
-	layoutTarget: unknown;
-	layout: LayoutGroup[];
-};
+type WidgetLayout = z.infer<typeof WidgetLayout>;
 export const WidgetLayout = z.object({
 	layoutTarget: z.unknown(),
 	layout: z.any().transform((value) => createWidgetLayout(value)),

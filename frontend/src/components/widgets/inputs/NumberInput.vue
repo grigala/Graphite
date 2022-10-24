@@ -89,6 +89,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type IncrementBehavior } from "@/wasm-communication/messages";
 
 import FieldInput from "@/components/widgets/inputs/FieldInput.vue";
@@ -106,7 +108,7 @@ export default defineComponent({
 		displayDecimalPlaces: { type: Number as PropType<number>, default: 3 },
 		unit: { type: String as PropType<string>, default: "" },
 		unitIsHiddenWhenEditing: { type: Boolean as PropType<boolean>, default: true },
-		incrementBehavior: { type: String as PropType<IncrementBehavior>, default: "Add" },
+		incrementBehavior: { type: String as PropType<z.infer<typeof IncrementBehavior>>, default: "Add" },
 		incrementFactor: { type: Number as PropType<number>, default: 1 },
 		disabled: { type: Boolean as PropType<boolean>, default: false },
 		minWidth: { type: Number as PropType<number>, default: 0 },

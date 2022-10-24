@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 import { escapeJSON } from "@/utility-functions/escape";
 import { blobToBase64 } from "@/utility-functions/files";
 import { type RequestResult, requestWithUploadDownloadProgress } from "@/utility-functions/network";
@@ -20,7 +22,7 @@ let statusAbortController = new AbortController();
 // PUBLICLY CALLABLE FUNCTIONS
 
 export async function imaginateGenerate(
-	parameters: ImaginateGenerationParameters,
+	parameters: z.infer<typeof ImaginateGenerationParameters>,
 	image: Blob | undefined,
 	hostname: string,
 	refreshFrequency: number,
@@ -215,7 +217,7 @@ async function generate(
 	discloseUploadingProgress: (progress: number) => void,
 	hostname: string,
 	image: Blob | undefined,
-	parameters: ImaginateGenerationParameters
+	parameters: z.infer<typeof ImaginateGenerationParameters>
 ): Promise<{
 	uploaded: Promise<void>;
 	result: Promise<RequestResult>;

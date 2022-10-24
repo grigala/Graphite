@@ -1,5 +1,4 @@
 import { type Editor } from "@/wasm-communication/editor";
-import { TriggerAboutGraphiteLocalizedCommitDate } from "@/wasm-communication/messages";
 
 export function createLocalizationManager(editor: Editor): void {
 	function localizeTimestamp(utc: string): string {
@@ -18,7 +17,7 @@ export function createLocalizationManager(editor: Editor): void {
 	}
 
 	// Subscribe to process backend event
-	editor.subscriptions.subscribeJsMessage(TriggerAboutGraphiteLocalizedCommitDate, (triggerAboutGraphiteLocalizedCommitDate) => {
+	editor.subscriptions.subscribeJsMessage("TriggerAboutGraphiteLocalizedCommitDate", (triggerAboutGraphiteLocalizedCommitDate) => {
 		const localized = localizeTimestamp(triggerAboutGraphiteLocalizedCommitDate.commitDate);
 		editor.instance.requestAboutGraphiteDialogWithLocalizedCommitDate(localized);
 	});

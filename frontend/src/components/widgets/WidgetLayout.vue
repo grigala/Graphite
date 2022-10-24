@@ -18,6 +18,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { isWidgetColumn, isWidgetRow, isWidgetSection, type LayoutGroup, type WidgetLayout } from "@/wasm-communication/messages";
 
 import WidgetSection from "@/components/widgets/groups/WidgetSection.vue";
@@ -25,7 +27,7 @@ import WidgetRow from "@/components/widgets/WidgetRow.vue";
 
 export default defineComponent({
 	props: {
-		layout: { type: Object as PropType<WidgetLayout>, required: true },
+		layout: { type: Object as PropType<z.infer<typeof WidgetLayout>>, required: true },
 	},
 	methods: {
 		LayoutGroupType(layoutRow: LayoutGroup): unknown {

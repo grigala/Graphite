@@ -6,7 +6,7 @@
 		<LayoutRow class="swatch">
 			<button class="swatch-button" :class="{ 'disabled-swatch': !value }" :style="`--swatch-color: #${value}`" @click="() => $emit('update:open', true)"></button>
 			<FloatingMenu v-model:open="isOpen" :type="'Popover'" :direction="'Bottom'">
-				<ColorPicker @update:color="(color: RGBA) => colorPickerUpdated(color)" :color="color" />
+				<ColorPicker @update:color="(color) => colorPickerUpdated(color)" :color="color" />
 			</FloatingMenu>
 		</LayoutRow>
 	</LayoutRow>
@@ -70,6 +70,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type RGBA } from "@/wasm-communication/messages";
 
 import ColorPicker from "@/components/floating-menus/ColorPicker.vue";
@@ -125,7 +127,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		colorPickerUpdated(color: RGBA) {
+		colorPickerUpdated(color: z.infer<typeof RGBA>) {
 			const twoDigitHex = (value: number): string => value.toString(16).padStart(2, "0");
 			const alphaU8Scale = Math.floor(color.a * 255);
 			const newValue = `${twoDigitHex(color.r)}${twoDigitHex(color.g)}${twoDigitHex(color.b)}${twoDigitHex(alphaU8Scale)}`;

@@ -1,13 +1,15 @@
+import type { z } from "zod";
+
 import { type DialogState } from "@/state-providers/dialog";
 import { type IconName } from "@/utility-functions/icons";
 import { browserVersion, operatingSystem } from "@/utility-functions/platform";
 import { stripIndents } from "@/utility-functions/strip-indents";
 import { type Editor } from "@/wasm-communication/editor";
-import { type TextButtonWidget, type WidgetLayout, Widget, DisplayDialogPanic } from "@/wasm-communication/messages";
+import { type TextButtonWidget, type WidgetLayout } from "@/wasm-communication/messages";
 
 export function createPanicManager(editor: Editor, dialogState: DialogState): void {
 	// Code panic dialog and console error
-	editor.subscriptions.subscribeJsMessage(DisplayDialogPanic, (displayDialogPanic) => {
+	editor.subscriptions.subscribeJsMessage("DisplayDialogPanic", (displayDialogPanic) => {
 		// `Error.stackTraceLimit` is only available in V8/Chromium
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(Error as any).stackTraceLimit = Infinity;
@@ -22,11 +24,11 @@ export function createPanicManager(editor: Editor, dialogState: DialogState): vo
 	});
 }
 
-function preparePanicDialog(header: string, details: string, panicDetails: string): [IconName, WidgetLayout, TextButtonWidget[]] {
-	const widgets: WidgetLayout = {
+function preparePanicDialog(header: string, details: string, panicDetails: string): [IconName, z.infer<typeof WidgetLayout>, TextButtonWidget[]] {
+	const widgets: z.infer<typeof WidgetLayout> = {
 		layout: [
-			{ rowWidgets: [new Widget({ kind: "TextLabel", value: header, bold: true, italic: false, tableAlign: false, minWidth: 0, multiline: false, tooltip: "" }, 0n)] },
-			{ rowWidgets: [new Widget({ kind: "TextLabel", value: details, bold: false, italic: false, tableAlign: false, minWidth: 0, multiline: true, tooltip: "" }, 1n)] },
+			{ rowWidgets: [{ widgetId: 0n, props: { kind: "TextLabel", value: header, bold: true, italic: false, tableAlign: false, minWidth: 0, multiline: false, tooltip: "" } }] },
+			{ rowWidgets: [{ widgetId: 1n, props: { kind: "TextLabel", value: details, bold: false, italic: false, tableAlign: false, minWidth: 0, multiline: true, tooltip: "" } }] },
 		],
 		layoutTarget: undefined,
 	};

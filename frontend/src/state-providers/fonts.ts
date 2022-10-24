@@ -1,7 +1,6 @@
 import { reactive } from "vue";
 
 import { type Editor } from "@/wasm-communication/editor";
-import { TriggerFontLoad } from "@/wasm-communication/messages";
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createFontsState(editor: Editor) {
@@ -47,7 +46,7 @@ export function createFontsState(editor: Editor) {
 	}
 
 	// Subscribe to process backend events
-	editor.subscriptions.subscribeJsMessage(TriggerFontLoad, async (triggerFontLoad) => {
+	editor.subscriptions.subscribeJsMessage("TriggerFontLoad", async (triggerFontLoad) => {
 		const url = await getFontFileUrl(triggerFontLoad.font.fontFamily, triggerFontLoad.font.fontStyle);
 		if (url) {
 			const response = await (await fetch(url)).arrayBuffer();

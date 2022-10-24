@@ -264,17 +264,11 @@
 <script lang="ts">
 import { defineComponent, nextTick } from "vue";
 
+import type { z } from "zod";
+
 import { platformIsMac } from "@/utility-functions/platform";
-import {
-	type LayerType,
-	type LayerTypeData,
-	type LayerPanelEntry,
-	defaultWidgetLayout,
-	UpdateDocumentLayerDetails,
-	UpdateDocumentLayerTreeStructure,
-	UpdateLayerTreeOptionsLayout,
-	layerTypeData,
-} from "@/wasm-communication/messages";
+import type { UpdateDocumentLayerTreeStructure } from "@/wasm-communication/messages";
+import { type LayerType, type LayerTypeData, type LayerPanelEntry, defaultWidgetLayout, layerTypeData } from "@/wasm-communication/messages";
 
 import LayoutCol from "@/components/layout/LayoutCol.vue";
 import LayoutRow from "@/components/layout/LayoutRow.vue";
@@ -282,7 +276,7 @@ import IconButton from "@/components/widgets/buttons/IconButton.vue";
 import IconLabel from "@/components/widgets/labels/IconLabel.vue";
 import WidgetLayout from "@/components/widgets/WidgetLayout.vue";
 
-type LayerListingInfo = { folderIndex: number; bottomLayer: boolean; editingName: boolean; entry: LayerPanelEntry };
+type LayerListingInfo = { folderIndex: number; bottomLayer: boolean; editingName: boolean; entry: z.infer<typeof LayerPanelEntry> };
 
 const RANGE_TO_INSERT_WITHIN_BOTTOM_FOLDER_NOT_ROOT = 20;
 const LAYER_INDENT = 16;
@@ -296,7 +290,7 @@ export default defineComponent({
 	data() {
 		return {
 			// Layer data
-			layerCache: new Map() as Map<string, LayerPanelEntry>, // TODO: replace with BigUint64Array as index
+			layerCache: new Map() as Map<string, z.infer<typeof LayerPanelEntry>>, // TODO: replace with BigUint64Array as index
 			layers: [] as LayerListingInfo[],
 
 			// Interactive dragging
@@ -308,7 +302,7 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		layerIndent(layer: LayerPanelEntry): string {
+		layerIndent(layer: z.infer<typeof LayerPanelEntry>): string {
 			return `${layer.path.length * LAYER_INDENT}px`;
 		},
 		markIndent(path: BigUint64Array): string {
@@ -458,14 +452,14 @@ export default defineComponent({
 				this.draggingData = undefined;
 			}
 		},
-		rebuildLayerTree(updateDocumentLayerTreeStructure: UpdateDocumentLayerTreeStructure) {
+		rebuildLayerTree(updateDocumentLayerTreeStructure: z.infer<typeof UpdateDocumentLayerTreeStructure>) {
 			const layerWithNameBeingEdited = this.layers.find((layer: LayerListingInfo) => layer.editingName);
 			const layerPathWithNameBeingEdited = layerWithNameBeingEdited?.entry.path;
 			const layerIdWithNameBeingEdited = layerPathWithNameBeingEdited?.slice(-1)[0];
 			const path = [] as bigint[];
 			this.layers = [] as LayerListingInfo[];
 
-			const recurse = (folder: UpdateDocumentLayerTreeStructure, layers: LayerListingInfo[], cache: Map<string, LayerPanelEntry>): void => {
+			const recurse = (folder: z.infer<typeof UpdateDocumentLayerTreeStructure>, layers: LayerListingInfo[], cache: Map<string, z.infer<typeof LayerPanelEntry>>): void => {
 				folder.children.forEach((item, index) => {
 					// TODO: fix toString
 					const layerId = BigInt(item.layerId.toString());
@@ -490,20 +484,20 @@ export default defineComponent({
 
 			recurse(updateDocumentLayerTreeStructure, this.layers, this.layerCache);
 		},
-		layerTypeData(layerType: LayerType): LayerTypeData {
+		layerTypeData(layerType: z.infer<typeof LayerType>): LayerTypeData {
 			return layerTypeData(layerType) || { name: "Error", icon: "NodeText" };
 		},
 	},
 	mounted() {
-		this.editor.subscriptions.subscribeJsMessage(UpdateDocumentLayerTreeStructure, (updateDocumentLayerTreeStructure) => {
+		this.editor.subscriptions.subscribeJsMessage("UpdateDocumentLayerTreeStructure", (updateDocumentLayerTreeStructure) => {
 			this.rebuildLayerTree(updateDocumentLayerTreeStructure);
 		});
 
-		this.editor.subscriptions.subscribeJsMessage(UpdateLayerTreeOptionsLayout, (updateLayerTreeOptionsLayout) => {
+		this.editor.subscriptions.subscribeJsMessage("UpdateLayerTreeOptionsLayout", (updateLayerTreeOptionsLayout) => {
 			this.layerTreeOptionsLayout = updateLayerTreeOptionsLayout;
 		});
 
-		this.editor.subscriptions.subscribeJsMessage(UpdateDocumentLayerDetails, (updateDocumentLayerDetails) => {
+		this.editor.subscriptions.subscribeJsMessage("UpdateDocumentLayerDetails", (updateDocumentLayerDetails) => {
 			const targetPath = updateDocumentLayerDetails.data.path;
 			const targetLayer = updateDocumentLayerDetails.data;
 

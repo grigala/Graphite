@@ -67,8 +67,10 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
+import type { z } from "zod";
+
 import { platformIsMac } from "@/utility-functions/platform";
-import { type KeyRaw, type KeysGroup, type MenuBarEntry, type MenuListEntry, UpdateMenuBarLayout } from "@/wasm-communication/messages";
+import { type KeyRaw, type KeysGroup, type MenuBarEntry, type MenuListEntry } from "@/wasm-communication/messages";
 
 import MenuList from "@/components/floating-menus/MenuList.vue";
 import IconLabel from "@/components/widgets/labels/IconLabel.vue";
@@ -78,7 +80,7 @@ type MenuListInstance = InstanceType<typeof MenuList>;
 
 // TODO: Apparently, Safari does not support the Keyboard.lock() API but does relax its authority over certain keyboard shortcuts in fullscreen mode, which we should take advantage of
 const accelKey = platformIsMac() ? "Command" : "Control";
-const LOCK_REQUIRING_SHORTCUTS: KeyRaw[][] = [
+const LOCK_REQUIRING_SHORTCUTS: z.infer<typeof KeyRaw>[][] = [
 	[accelKey, "KeyW"],
 	[accelKey, "KeyN"],
 	[accelKey, "Shift", "KeyN"],
@@ -89,9 +91,9 @@ const LOCK_REQUIRING_SHORTCUTS: KeyRaw[][] = [
 export default defineComponent({
 	inject: ["editor"],
 	mounted() {
-		this.editor.subscriptions.subscribeJsMessage(UpdateMenuBarLayout, (updateMenuBarLayout) => {
-			const arraysEqual = (a: KeyRaw[], b: KeyRaw[]): boolean => a.length === b.length && a.every((aValue, i) => aValue === b[i]);
-			const shortcutRequiresLock = (shortcut: KeysGroup): boolean => {
+		this.editor.subscriptions.subscribeJsMessage("UpdateMenuBarLayout", (updateMenuBarLayout) => {
+			const arraysEqual = (a: z.infer<typeof KeyRaw>[], b: z.infer<typeof KeyRaw>[]): boolean => a.length === b.length && a.every((aValue, i) => aValue === b[i]);
+			const shortcutRequiresLock = (shortcut: z.infer<typeof KeysGroup>): boolean => {
 				const shortcutKeys = shortcut.map((keyWithLabel) => keyWithLabel.key);
 
 				// If this shortcut matches any of the browser-reserved shortcuts

@@ -132,6 +132,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type IconName } from "@/utility-functions/icons";
 import { platformIsMac } from "@/utility-functions/platform";
 import { type KeyRaw, type KeysGroup, type Key, type MouseMotion } from "@/wasm-communication/messages";
@@ -163,8 +165,8 @@ const ICON_WIDTHS = {
 export default defineComponent({
 	inject: ["fullscreen"],
 	props: {
-		keysWithLabelsGroups: { type: Array as PropType<KeysGroup[]>, default: () => [] },
-		mouseMotion: { type: String as PropType<MouseMotion | undefined>, required: false },
+		keysWithLabelsGroups: { type: Array as PropType<z.infer<typeof KeysGroup>[]>, default: () => [] },
+		mouseMotion: { type: String as PropType<z.infer<typeof MouseMotion> | undefined>, required: false },
 		requiresLock: { type: Boolean as PropType<boolean>, default: false },
 	},
 	computed: {
@@ -187,10 +189,10 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		keyTextOrIconList(keyGroup: KeysGroup): LabelData[] {
+		keyTextOrIconList(keyGroup: z.infer<typeof KeysGroup>): LabelData[] {
 			return keyGroup.map((key) => this.keyTextOrIcon(key));
 		},
-		keyTextOrIcon(keyWithLabel: Key): LabelData {
+		keyTextOrIcon(keyWithLabel: z.infer<typeof Key>): LabelData {
 			// `key` is the name of the `Key` enum in Rust, while `label` is the localized string to display (if it doesn't become an icon)
 			let key = keyWithLabel.key;
 			const label = keyWithLabel.label;
@@ -210,10 +212,10 @@ export default defineComponent({
 			// ...or display text
 			return { label, width: `width-${label.length}` };
 		},
-		mouseHintIcon(input?: MouseMotion): IconName {
+		mouseHintIcon(input?: z.infer<typeof MouseMotion>): IconName {
 			return `MouseHint${input}` as IconName;
 		},
-		keyboardHintIcon(input: KeyRaw): IconName | undefined {
+		keyboardHintIcon(input: z.infer<typeof KeyRaw>): IconName | undefined {
 			switch (input) {
 				case "ArrowDown":
 					return "KeyboardArrowDown";

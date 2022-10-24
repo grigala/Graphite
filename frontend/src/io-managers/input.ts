@@ -5,7 +5,6 @@ import { makeKeyboardModifiersBitfield, textInputCleanup, getLocalizedScanCode }
 import { platformIsMac } from "@/utility-functions/platform";
 import { stripIndents } from "@/utility-functions/strip-indents";
 import { type Editor } from "@/wasm-communication/editor";
-import { TriggerPaste } from "@/wasm-communication/messages";
 
 type EventName = keyof HTMLElementEventMap | keyof WindowEventHandlersEventMap | "modifyinputfield";
 type EventListenerTarget = {
@@ -280,7 +279,7 @@ export function createInputManager(editor: Editor, container: HTMLElement, dialo
 
 	// Frontend message subscriptions
 
-	editor.subscriptions.subscribeJsMessage(TriggerPaste, async () => {
+	editor.subscriptions.subscribeJsMessage("TriggerPaste", async () => {
 		// In the try block, attempt to read from the Clipboard API, which may not have permission and may not be supported in all browsers
 		// In the catch block, explain to the user why the paste failed and how to fix or work around the problem
 		try {

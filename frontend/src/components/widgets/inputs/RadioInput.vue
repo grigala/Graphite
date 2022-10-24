@@ -64,6 +64,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type RadioEntries, type RadioEntryData } from "@/wasm-communication/messages";
 
 import LayoutRow from "@/components/layout/LayoutRow.vue";
@@ -73,11 +75,11 @@ import TextLabel from "@/components/widgets/labels/TextLabel.vue";
 export default defineComponent({
 	emits: ["update:selectedIndex"],
 	props: {
-		entries: { type: Array as PropType<RadioEntries>, required: true },
+		entries: { type: Array as PropType<z.infer<typeof RadioEntries>>, required: true },
 		selectedIndex: { type: Number as PropType<number>, required: true },
 	},
 	methods: {
-		handleEntryClick(radioEntryData: RadioEntryData) {
+		handleEntryClick(radioEntryData: z.infer<typeof RadioEntryData>) {
 			const index = this.entries.indexOf(radioEntryData);
 			this.$emit("update:selectedIndex", index);
 

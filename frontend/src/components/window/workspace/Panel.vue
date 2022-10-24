@@ -212,6 +212,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { platformIsMac } from "@/utility-functions/platform";
 
 import { type KeysGroup, type Key } from "@/wasm-communication/messages";
@@ -258,12 +260,12 @@ export default defineComponent({
 		openDocument() {
 			this.editor.instance.documentOpen();
 		},
-		platformModifiers(reservedKey: boolean): KeysGroup {
+		platformModifiers(reservedKey: boolean): z.infer<typeof KeysGroup> {
 			// TODO: Remove this by properly feeding these keys from a layout provided by the backend
 
-			const ALT: Key = { key: "Alt", label: "Alt" };
-			const COMMAND: Key = { key: "Command", label: "Command" };
-			const CONTROL: Key = { key: "Control", label: "Ctrl" };
+			const ALT: z.infer<typeof Key> = { key: "Alt", label: "Alt" };
+			const COMMAND: z.infer<typeof Key> = { key: "Command", label: "Command" };
+			const CONTROL: z.infer<typeof Key> = { key: "Control", label: "Ctrl" };
 
 			if (platformIsMac()) return reservedKey ? [ALT, COMMAND] : [COMMAND];
 			return reservedKey ? [CONTROL, ALT] : [CONTROL];

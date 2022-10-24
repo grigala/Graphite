@@ -1,8 +1,10 @@
 import { reactive, readonly } from "vue";
 
+import type { z } from "zod";
+
 import { type IconName } from "@/utility-functions/icons";
 import { type Editor } from "@/wasm-communication/editor";
-import { type TextButtonWidget, type WidgetLayout, defaultWidgetLayout, DisplayDialog, DisplayDialogDismiss, UpdateDialogDetails } from "@/wasm-communication/messages";
+import { type TextButtonWidget, type WidgetLayout, defaultWidgetLayout } from "@/wasm-communication/messages";
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createDialogState(editor: Editor) {
@@ -24,7 +26,7 @@ export function createDialogState(editor: Editor) {
 
 	// Creates a panic dialog from JS.
 	// Normal dialogs are created in the Rust backend, but for the crash dialog, the editor instance has panicked so it cannot respond to widget callbacks.
-	function createPanicDialog(icon: IconName, widgets: WidgetLayout, jsCallbackBasedButtons: TextButtonWidget[]): void {
+	function createPanicDialog(icon: IconName, widgets: z.infer<typeof WidgetLayout>, jsCallbackBasedButtons: TextButtonWidget[]): void {
 		state.visible = true;
 		state.icon = icon;
 		state.widgets = widgets;
@@ -32,15 +34,15 @@ export function createDialogState(editor: Editor) {
 	}
 
 	// Subscribe to process backend events
-	editor.subscriptions.subscribeJsMessage(DisplayDialog, (displayDialog) => {
+	editor.subscriptions.subscribeJsMessage("DisplayDialog", (displayDialog) => {
 		state.visible = true;
 		state.icon = displayDialog.icon;
 	});
-	editor.subscriptions.subscribeJsMessage(UpdateDialogDetails, (updateDialogDetails) => {
+	editor.subscriptions.subscribeJsMessage("UpdateDialogDetails", (updateDialogDetails) => {
 		state.widgets = updateDialogDetails;
 		state.jsCallbackBasedButtons = undefined;
 	});
-	editor.subscriptions.subscribeJsMessage(DisplayDialogDismiss, dismissDialog);
+	editor.subscriptions.subscribeJsMessage("DisplayDialogDismiss", dismissDialog);
 
 	return {
 		state: readonly(state) as typeof state,

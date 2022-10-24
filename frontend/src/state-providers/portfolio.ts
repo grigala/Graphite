@@ -1,55 +1,44 @@
 /* eslint-disable max-classes-per-file */
 import { reactive, readonly } from "vue";
 
+import type { z } from "zod";
+
 import { downloadFileText, downloadFileBlob, upload } from "@/utility-functions/files";
 import { imaginateGenerate, imaginateCheckConnection, imaginateTerminate } from "@/utility-functions/imaginate";
 import { rasterizeSVG } from "@/utility-functions/rasterization";
 import { type Editor } from "@/wasm-communication/editor";
-import {
-	type FrontendDocumentDetails,
-	TriggerFileDownload,
-	TriggerImport,
-	TriggerOpenDocument,
-	TriggerRasterDownload,
-	TriggerImaginateGenerate,
-	TriggerImaginateTerminate,
-	TriggerImaginateCheckServerStatus,
-	UpdateActiveDocument,
-	UpdateOpenDocumentsList,
-	UpdateImageData,
-	TriggerRevokeBlobUrl,
-} from "@/wasm-communication/messages";
+import type { FrontendDocumentDetails } from "@/wasm-communication/messages";
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createPortfolioState(editor: Editor) {
 	const state = reactive({
 		unsaved: false,
-		documents: [] as FrontendDocumentDetails[],
+		documents: [] as z.infer<typeof FrontendDocumentDetails>[],
 		activeDocumentIndex: 0,
 	});
 
 	// Set up message subscriptions on creation
-	editor.subscriptions.subscribeJsMessage(UpdateOpenDocumentsList, (updateOpenDocumentList) => {
+	editor.subscriptions.subscribeJsMessage("UpdateOpenDocumentsList", (updateOpenDocumentList) => {
 		state.documents = updateOpenDocumentList.openDocuments;
 	});
-	editor.subscriptions.subscribeJsMessage(UpdateActiveDocument, (updateActiveDocument) => {
+	editor.subscriptions.subscribeJsMessage("UpdateActiveDocument", (updateActiveDocument) => {
 		// Assume we receive a correct document id
 		const activeId = state.documents.findIndex((doc) => doc.id === updateActiveDocument.documentId);
 		state.activeDocumentIndex = activeId;
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerOpenDocument, async () => {
+	editor.subscriptions.subscribeJsMessage("TriggerOpenDocument", async () => {
 		const extension = editor.instance.fileSaveSuffix();
 		const data = await upload(extension, "text");
 		editor.instance.openDocumentFile(data.filename, data.content);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerImport, async () => {
+	editor.subscriptions.subscribeJsMessage("TriggerImport", async () => {
 		const data = await upload("image/*", "data");
 		editor.instance.pasteImage(data.type, Uint8Array.from(data.content));
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerFileDownload, (triggerFileDownload) => {
+	editor.subscriptions.subscribeJsMessage("TriggerFileDownload", (triggerFileDownload) => {
 		downloadFileText(triggerFileDownload.name, triggerFileDownload.document);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerRasterDownload, async (triggerRasterDownload) => {
+	editor.subscriptions.subscribeJsMessage("TriggerRasterDownload", async (triggerRasterDownload) => {
 		const { svg, name, mime, size } = triggerRasterDownload;
 
 		// Fill the canvas with white if it'll be a JPEG (which does not support transparency and defaults to black)
@@ -61,12 +50,12 @@ export function createPortfolioState(editor: Editor) {
 		// Have the browser download the file to the user's disk
 		downloadFileBlob(name, blob);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerImaginateCheckServerStatus, async (triggerImaginateCheckServerStatus) => {
+	editor.subscriptions.subscribeJsMessage("TriggerImaginateCheckServerStatus", async (triggerImaginateCheckServerStatus) => {
 		const { hostname } = triggerImaginateCheckServerStatus;
 
 		imaginateCheckConnection(hostname, editor);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerImaginateGenerate, async (triggerImaginateGenerate) => {
+	editor.subscriptions.subscribeJsMessage("TriggerImaginateGenerate", async (triggerImaginateGenerate) => {
 		const { documentId, layerPath, hostname, refreshFrequency, baseImage, parameters } = triggerImaginateGenerate;
 
 		// Handle img2img mode
@@ -82,12 +71,12 @@ export function createPortfolioState(editor: Editor) {
 
 		imaginateGenerate(parameters, image, hostname, refreshFrequency, documentId, layerPath, editor);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerImaginateTerminate, async (triggerImaginateTerminate) => {
+	editor.subscriptions.subscribeJsMessage("TriggerImaginateTerminate", async (triggerImaginateTerminate) => {
 		const { documentId, layerPath, hostname } = triggerImaginateTerminate;
 
 		imaginateTerminate(hostname, documentId, layerPath, editor);
 	});
-	editor.subscriptions.subscribeJsMessage(UpdateImageData, (updateImageData) => {
+	editor.subscriptions.subscribeJsMessage("UpdateImageData", (updateImageData) => {
 		updateImageData.imageData.forEach(async (element) => {
 			const buffer = new Uint8Array(element.imageData.values()).buffer;
 			const blob = new Blob([buffer], { type: element.mime });
@@ -99,7 +88,7 @@ export function createPortfolioState(editor: Editor) {
 			editor.instance.setImageBlobURL(updateImageData.documentId, element.path, blobURL, image.width, image.height);
 		});
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerRevokeBlobUrl, async (triggerRevokeBlobUrl) => {
+	editor.subscriptions.subscribeJsMessage("TriggerRevokeBlobUrl", async (triggerRevokeBlobUrl) => {
 		URL.revokeObjectURL(triggerRevokeBlobUrl.url);
 	});
 

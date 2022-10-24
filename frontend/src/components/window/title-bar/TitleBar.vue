@@ -58,7 +58,8 @@ export default defineComponent({
 	computed: {
 		windowTitle(): string {
 			const activeDocumentIndex = this.portfolio.state.activeDocumentIndex;
-			const activeDocumentDisplayName = this.portfolio.state.documents[activeDocumentIndex]?.displayName || "";
+			const details = this.portfolio.state.documents[activeDocumentIndex];
+			const activeDocumentDisplayName = details ? `${details.name}${details.isSaved ? "" : "*"}` : "";
 
 			return `${activeDocumentDisplayName}${activeDocumentDisplayName && " - "}Graphite`;
 		},

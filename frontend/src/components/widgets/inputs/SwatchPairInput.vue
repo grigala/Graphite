@@ -1,15 +1,15 @@
 <template>
 	<LayoutCol class="swatch-pair">
 		<LayoutRow class="secondary swatch">
-			<button @click="() => clickSecondarySwatch()" :style="`--swatch-color: ${secondary.toRgbaCSS()}`" data-hover-menu-spawner></button>
+			<button @click="() => clickSecondarySwatch()" :style="`--swatch-color: ${colorToRgbaCSS(secondary)}`" data-hover-menu-spawner></button>
 			<FloatingMenu :type="'Popover'" :direction="'Right'" v-model:open="secondaryOpen">
-				<ColorPicker @update:color="(color: RGBA) => secondaryColorChanged(color)" :color="secondary.toRgba()" />
+				<ColorPicker @update:color="(color) => secondaryColorChanged(color)" :color="colorToRgba(secondary)" />
 			</FloatingMenu>
 		</LayoutRow>
 		<LayoutRow class="primary swatch">
-			<button @click="() => clickPrimarySwatch()" :style="`--swatch-color: ${primary.toRgbaCSS()}`" data-hover-menu-spawner></button>
+			<button @click="() => clickPrimarySwatch()" :style="`--swatch-color: ${colorToRgbaCSS(primary)}`" data-hover-menu-spawner></button>
 			<FloatingMenu :type="'Popover'" :direction="'Right'" v-model:open="primaryOpen">
-				<ColorPicker @update:color="(color: RGBA) => primaryColorChanged(color)" :color="primary.toRgba()" />
+				<ColorPicker @update:color="(color) => primaryColorChanged(color)" :color="colorToRgba(primary)" />
 			</FloatingMenu>
 		</LayoutRow>
 	</LayoutCol>
@@ -68,8 +68,10 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { rgbaToDecimalRgba } from "@/utility-functions/color";
-import { type RGBA, type Color } from "@/wasm-communication/messages";
+import { type RGBA, type Color, colorToRgbaCSS, colorToRgba } from "@/wasm-communication/messages";
 
 import ColorPicker from "@/components/floating-menus/ColorPicker.vue";
 import FloatingMenu from "@/components/floating-menus/FloatingMenu.vue";
@@ -79,8 +81,8 @@ import LayoutRow from "@/components/layout/LayoutRow.vue";
 export default defineComponent({
 	inject: ["editor"],
 	props: {
-		primary: { type: Object as PropType<Color>, required: true },
-		secondary: { type: Object as PropType<Color>, required: true },
+		primary: { type: Object as PropType<z.infer<typeof Color>>, required: true },
+		secondary: { type: Object as PropType<z.infer<typeof Color>>, required: true },
 	},
 	data() {
 		return {
@@ -97,14 +99,16 @@ export default defineComponent({
 			this.primaryOpen = false;
 			this.secondaryOpen = true;
 		},
-		primaryColorChanged(color: RGBA) {
+		primaryColorChanged(color: z.infer<typeof RGBA>) {
 			const newColor = rgbaToDecimalRgba(color);
 			this.editor.instance.updatePrimaryColor(newColor.r, newColor.g, newColor.b, newColor.a);
 		},
-		secondaryColorChanged(color: RGBA) {
+		secondaryColorChanged(color: z.infer<typeof RGBA>) {
 			const newColor = rgbaToDecimalRgba(color);
 			this.editor.instance.updateSecondaryColor(newColor.r, newColor.g, newColor.b, newColor.a);
 		},
+		colorToRgbaCSS,
+		colorToRgba,
 	},
 	components: {
 		ColorPicker,

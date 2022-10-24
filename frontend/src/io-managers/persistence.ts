@@ -1,7 +1,9 @@
+import type { z } from "zod";
+
 import { type PortfolioState } from "@/state-providers/portfolio";
 import { stripIndents } from "@/utility-functions/strip-indents";
 import { type Editor } from "@/wasm-communication/editor";
-import { TriggerIndexedDbWriteDocument, TriggerIndexedDbRemoveDocument, TriggerSavePreferences, TriggerLoadAutoSaveDocuments, TriggerLoadPreferences } from "@/wasm-communication/messages";
+import type { TriggerIndexedDbWriteDocument } from "@/wasm-communication/messages";
 
 const GRAPHITE_INDEXED_DB_VERSION = 2;
 const GRAPHITE_INDEXED_DB_NAME = "graphite-indexed-db";
@@ -73,15 +75,15 @@ export function createPersistenceManager(editor: Editor, portfolio: PortfolioSta
 		const request = transaction.objectStore(GRAPHITE_AUTO_SAVE_STORE.name).getAll();
 
 		request.onsuccess = (): void => {
-			const previouslySavedDocuments: TriggerIndexedDbWriteDocument[] = request.result;
+			const previouslySavedDocuments: z.infer<typeof TriggerIndexedDbWriteDocument>[] = request.result;
 
 			const documentOrder: string[] = JSON.parse(window.localStorage.getItem(GRAPHITE_AUTO_SAVE_ORDER_KEY) || "[]");
-			const orderedSavedDocuments = documentOrder
-				.map((id) => previouslySavedDocuments.find((autoSave) => autoSave.details.id === id))
-				.filter((x) => x !== undefined) as TriggerIndexedDbWriteDocument[];
+			const orderedSavedDocuments = documentOrder.map((id) => previouslySavedDocuments.find((autoSave) => autoSave.details.id === id)).filter((x) => x !== undefined) as z.infer<
+				typeof TriggerIndexedDbWriteDocument
+			>[];
 
 			const currentDocumentVersion = editor.instance.graphiteDocumentVersion();
-			orderedSavedDocuments.forEach(async (doc: TriggerIndexedDbWriteDocument) => {
+			orderedSavedDocuments.forEach(async (doc: z.infer<typeof TriggerIndexedDbWriteDocument>) => {
 				if (doc.version === currentDocumentVersion) {
 					editor.instance.openAutoSavedDocument(BigInt(doc.details.id), doc.details.name, doc.details.isSaved, doc.document);
 				} else {
@@ -122,19 +124,19 @@ export function createPersistenceManager(editor: Editor, portfolio: PortfolioSta
 	}
 
 	// Subscribe to process backend events
-	editor.subscriptions.subscribeJsMessage(TriggerIndexedDbWriteDocument, async (autoSaveDocument) => {
+	editor.subscriptions.subscribeJsMessage("TriggerIndexedDbWriteDocument", async (autoSaveDocument) => {
 		const transaction = (await databaseConnection).transaction(GRAPHITE_AUTO_SAVE_STORE.name, "readwrite");
 		transaction.objectStore(GRAPHITE_AUTO_SAVE_STORE.name).put(autoSaveDocument);
 
 		storeDocumentOrder();
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerIndexedDbRemoveDocument, async (removeAutoSaveDocument) => {
+	editor.subscriptions.subscribeJsMessage("TriggerIndexedDbRemoveDocument", async (removeAutoSaveDocument) => {
 		await removeDocument(removeAutoSaveDocument.documentId, await databaseConnection);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerLoadAutoSaveDocuments, async () => {
+	editor.subscriptions.subscribeJsMessage("TriggerLoadAutoSaveDocuments", async () => {
 		await loadAutoSaveDocuments(await databaseConnection);
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerSavePreferences, async (preferences) => {
+	editor.subscriptions.subscribeJsMessage("TriggerSavePreferences", async (preferences) => {
 		Object.entries(preferences.preferences).forEach(async ([key, value]) => {
 			const storedObject = { key, value };
 
@@ -142,7 +144,7 @@ export function createPersistenceManager(editor: Editor, portfolio: PortfolioSta
 			transaction.objectStore(GRAPHITE_EDITOR_PREFERENCES_STORE.name).put(storedObject);
 		});
 	});
-	editor.subscriptions.subscribeJsMessage(TriggerLoadPreferences, async () => {
+	editor.subscriptions.subscribeJsMessage("TriggerLoadPreferences", async () => {
 		await loadPreferences(await databaseConnection);
 	});
 

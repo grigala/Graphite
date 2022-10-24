@@ -75,12 +75,14 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type SeparatorDirection, type SeparatorType } from "@/wasm-communication/messages";
 
 export default defineComponent({
 	props: {
-		direction: { type: String as PropType<SeparatorDirection>, default: "Horizontal" },
-		type: { type: String as PropType<SeparatorType>, default: "Unrelated" },
+		direction: { type: String as PropType<z.infer<typeof SeparatorDirection>>, default: "Horizontal" },
+		type: { type: String as PropType<z.infer<typeof SeparatorType>>, default: "Unrelated" },
 	},
 });
 </script>

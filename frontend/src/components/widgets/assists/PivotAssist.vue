@@ -98,6 +98,8 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
+import type { z } from "zod";
+
 import { type PivotPosition } from "@/wasm-communication/messages";
 
 export default defineComponent({
@@ -106,7 +108,7 @@ export default defineComponent({
 		position: { type: String as PropType<string>, required: true },
 	},
 	methods: {
-		setPosition(newPosition: PivotPosition) {
+		setPosition(newPosition: z.infer<typeof PivotPosition>) {
 			this.$emit("update:position", newPosition);
 		},
 	},

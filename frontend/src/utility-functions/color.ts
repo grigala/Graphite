@@ -1,6 +1,8 @@
+import type { z } from "zod";
+
 import { type HSVA, type RGBA } from "@/wasm-communication/messages";
 
-export function hsvaToRgba(hsva: HSVA): RGBA {
+export function hsvaToRgba(hsva: z.infer<typeof HSVA>): z.infer<typeof RGBA> {
 	const { h, s, v, a } = hsva;
 
 	const hue = h * 6;
@@ -19,7 +21,7 @@ export function hsvaToRgba(hsva: HSVA): RGBA {
 	return { r, g, b, a };
 }
 
-export function rgbaToHsva(rgba: RGBA): HSVA {
+export function rgbaToHsva(rgba: z.infer<typeof RGBA>): z.infer<typeof HSVA> {
 	const { r, g, b, a } = rgba;
 
 	const max = Math.max(r, g, b);
@@ -49,7 +51,7 @@ export function rgbaToHsva(rgba: RGBA): HSVA {
 	return { h, s, v, a };
 }
 
-export function rgbaToDecimalRgba(rgba: RGBA): RGBA {
+export function rgbaToDecimalRgba(rgba: z.infer<typeof RGBA>): z.infer<typeof RGBA> {
 	const r = rgba.r / 255;
 	const g = rgba.g / 255;
 	const b = rgba.b / 255;
