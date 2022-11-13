@@ -51,7 +51,7 @@ impl Subpath {
 			.windows(2)
 			.flat_map(|bezier_pair| {
 				// TODO: Move this logic to transform, consider self intersection on the joining bezier...
-				// TODO: reduce or make optional this max 	difference...
+				// TODO: Find out how to reduce max difference or make it configurable
 				if bezier_pair[0].end().abs_diff_eq(bezier_pair[1].start(), 1.) {
 					// if compare_points(bezier_pair[0].end(), bezier_pair[1].start()) {
 					vec![ManipulatorGroup {
@@ -87,7 +87,8 @@ impl Subpath {
 			return Subpath::new(manipulator_groups, false);
 		}
 
-		if compare_points(first.start(), last.end()) {
+		// TODO: Find out how to reduce max difference or make it configurable
+		if first.start().abs_diff_eq(last.end(), 1.) {
 			manipulator_groups[0].in_handle = last.handle_end();
 		} else {
 			let joining_bezier = last.join(*first);
