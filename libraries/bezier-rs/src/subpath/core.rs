@@ -38,6 +38,7 @@ impl Subpath {
 		if beziers.is_empty() {
 			return Subpath::new(vec![], closed);
 		}
+
 		let first = beziers.first().unwrap();
 		let last = beziers.last().unwrap();
 
@@ -49,9 +50,12 @@ impl Subpath {
 		let mut inner_groups: Vec<ManipulatorGroup> = beziers
 			.windows(2)
 			.flat_map(|bezier_pair| {
-				if compare_points(bezier_pair[0].end(), bezier_pair[1].start()) {
+				// TODO: Move this logic to transform, consider self intersection on the joining bezier...
+				// TODO: reduce or make optional this max 	difference...
+				if bezier_pair[0].end().abs_diff_eq(bezier_pair[1].start(), 1.) {
+					// if compare_points(bezier_pair[0].end(), bezier_pair[1].start()) {
 					vec![ManipulatorGroup {
-						anchor: bezier_pair[0].start(),
+						anchor: bezier_pair[0].end(),
 						in_handle: bezier_pair[0].handle_end(),
 						out_handle: bezier_pair[1].handle_start(),
 					}]
@@ -77,7 +81,7 @@ impl Subpath {
 		if !closed {
 			manipulator_groups.push(ManipulatorGroup {
 				anchor: last.end(),
-				in_handle: first.handle_end(),
+				in_handle: last.handle_end(),
 				out_handle: None,
 			});
 			return Subpath::new(manipulator_groups, false);
