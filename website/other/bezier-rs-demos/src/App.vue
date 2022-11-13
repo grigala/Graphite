@@ -19,7 +19,7 @@
 		</div>
 		<h2>Subpaths</h2>
 		<div v-for="(feature, index) in subpathFeatures" :key="index">
-			<SubpathExamplePane :name="feature.name" :callback="feature.callback" />
+			<SubpathExamplePane :name="feature.name" :callback="feature.callback" :sliderOptions="feature.sliderOptions" />
 		</div>
 	</div>
 </template>
@@ -27,7 +27,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
-// import { WasmBezier } from "@/../wasm/pkg";
+import { WasmBezier } from "@/../wasm/pkg";
 import { BezierCurveType, ExampleOptions, Point, WasmBezierInstance, WasmSubpathInstance } from "@/utils/types";
 
 import BezierExamplePane from "@/components/BezierExamplePane.vue";
@@ -58,61 +58,60 @@ export default defineComponent({
 					name: "Constructor",
 					callback: (bezier: WasmBezierInstance, _: Record<string, number>): string => bezier.to_svg(),
 				},
-				// {
-				// 	name: "Bezier Through Points",
-				// 	callback: (bezier: WasmBezierInstance, options: Record<string, number>): string => {
-				// 		const points: Point[] = JSON.parse(bezier.get_points());
-				// 		const formattedPoints: number[][] = points.map((p) => [p.x, p.y]);
-				// 		if (Object.values(options).length === 1) {
-				// 			return WasmBezier.quadratic_through_points(formattedPoints, options.t);
-				// 		}
-				// 		return WasmBezier.cubic_through_points(formattedPoints, options.t, options["midpoint separation"]);
-				// 	},
-				// 	exampleOptions: {
-				// 		[BezierCurveType.Linear]: {
-				// 			disabled: true,
-				// 		},
-				// 		[BezierCurveType.Quadratic]: {
-				// 			customPoints: [
-				// 				[30, 50],
-				// 				[120, 70],
-				// 				[160, 170],
-				// 			],
-				// 			sliderOptions: [
-				// 				{
-				// 					min: 0.01,
-				// 					max: 0.99,
-				// 					step: 0.01,
-				// 					default: 0.5,
-				// 					variable: "t",
-				// 				},
-				// 			],
-				// 		},
-				// 		[BezierCurveType.Cubic]: {
-				// 			customPoints: [
-				// 				[30, 50],
-				// 				[120, 70],
-				// 				[160, 170],
-				// 			],
-				// 			sliderOptions: [
-				// 				{
-				// 					min: 0.01,
-				// 					max: 0.99,
-				// 					step: 0.01,
-				// 					default: 0.5,
-				// 					variable: "t",
-				// 				},
-				// 				{
-				// 					min: 0,
-				// 					max: 100,
-				// 					step: 2,
-				// 					default: 30,
-				// 					variable: "midpoint separation",
-				// 				},
-				// 			],
-				// 		},
-				// 	},
-				// },
+				{
+					name: "Bezier Through Points",
+					callback: (bezier: WasmBezierInstance, options: Record<string, number>): string => {
+						const points = JSON.parse(bezier.get_points());
+						if (Object.values(options).length === 1) {
+							return WasmBezier.quadratic_through_points(points, options.t);
+						}
+						return WasmBezier.cubic_through_points(points, options.t, options["midpoint separation"]);
+					},
+					exampleOptions: {
+						[BezierCurveType.Linear]: {
+							disabled: true,
+						},
+						[BezierCurveType.Quadratic]: {
+							customPoints: [
+								[30, 50],
+								[120, 70],
+								[160, 170],
+							],
+							sliderOptions: [
+								{
+									min: 0.01,
+									max: 0.99,
+									step: 0.01,
+									default: 0.5,
+									variable: "t",
+								},
+							],
+						},
+						[BezierCurveType.Cubic]: {
+							customPoints: [
+								[30, 50],
+								[120, 70],
+								[160, 170],
+							],
+							sliderOptions: [
+								{
+									min: 0.01,
+									max: 0.99,
+									step: 0.01,
+									default: 0.5,
+									variable: "t",
+								},
+								{
+									min: 0,
+									max: 100,
+									step: 2,
+									default: 30,
+									variable: "midpoint separation",
+								},
+							],
+						},
+					},
+				},
 				{
 					name: "Length",
 					callback: (bezier: WasmBezierInstance, _: Record<string, number>): string => bezier.length(),
@@ -530,6 +529,19 @@ export default defineComponent({
 				{
 					name: "Length",
 					callback: (subpath: WasmSubpathInstance): string => subpath.length(),
+				},
+				{
+					name: "Offset",
+					callback: (subpath: WasmSubpathInstance, options: Record<string, number>): string => subpath.offset(options.distance),
+					sliderOptions: [
+						{
+							variable: "distance",
+							min: -50,
+							max: 50,
+							step: 1,
+							default: 20,
+						},
+					],
 				},
 			],
 		};

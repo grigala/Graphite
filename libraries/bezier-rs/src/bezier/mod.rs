@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub(super) mod compare;
+use crate::compare::*;
 
 mod core;
 mod lookup;

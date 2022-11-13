@@ -28,7 +28,6 @@ pub enum WasmMaximizeArcs {
 }
 
 const SCALE_UNIT_VECTOR_FACTOR: f64 = 50.;
-const EMPTY_STRING: String = String::new();
 
 /// Wrapper of the `Bezier` struct to be used in JS.
 #[wasm_bindgen]
@@ -86,7 +85,7 @@ impl WasmBezier {
 			HANDLE_ATTRIBUTES.to_string().replace(GRAY, RED),
 			HANDLE_LINE_ATTRIBUTES.to_string().replace(GRAY, RED),
 		);
-		let through_point_circle = format!(r#"<circle cx="{}" cy="{}" {}/>"#, through_point.x, through_point.y, ANCHOR_ATTRIBUTES.to_string());
+		let through_point_circle = format!(r#"<circle cx="{}" cy="{}" {}/>"#, through_point.x, through_point.y, ANCHOR_ATTRIBUTES);
 
 		wrap_svg_tag(format!("{bezier_string}{through_point_circle}"))
 	}
@@ -384,13 +383,7 @@ impl WasmBezier {
 		let original_bezier_svg = self.get_bezier_path();
 		let rotated_bezier = self.0.rotate_about_point(angle, DVec2::new(pivot_x, pivot_y));
 		let mut rotated_bezier_svg = String::new();
-		rotated_bezier.to_svg(
-			&mut rotated_bezier_svg,
-			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-		);
+		rotated_bezier.to_svg(&mut rotated_bezier_svg, CURVE_ATTRIBUTES.to_string().replace(BLACK, RED), String::new(), String::new(), String::new());
 		let pivot = draw_circle(pivot_x, pivot_y, 3., GRAY, 1.5, WHITE);
 
 		// Line between pivot and start point on curve
@@ -433,13 +426,7 @@ impl WasmBezier {
 		let bezier_curve_svg = self.get_bezier_path();
 
 		let mut line_svg = String::new();
-		line.to_svg(
-			&mut line_svg,
-			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-		);
+		line.to_svg(&mut line_svg, CURVE_ATTRIBUTES.to_string().replace(BLACK, RED), String::new(), String::new(), String::new());
 
 		let intersections_svg = self
 			.intersect(&line, None)
@@ -459,13 +446,7 @@ impl WasmBezier {
 		let bezier_curve_svg = self.get_bezier_path();
 
 		let mut quadratic_svg = String::new();
-		quadratic.to_svg(
-			&mut quadratic_svg,
-			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-		);
+		quadratic.to_svg(&mut quadratic_svg, CURVE_ATTRIBUTES.to_string().replace(BLACK, RED), String::new(), String::new(), String::new());
 
 		let intersections_svg = self
 			.intersect(&quadratic, Some(error))
@@ -485,13 +466,7 @@ impl WasmBezier {
 		let bezier_curve_svg = self.get_bezier_path();
 
 		let mut cubic_svg = String::new();
-		cubic.to_svg(
-			&mut cubic_svg,
-			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone(),
-		);
+		cubic.to_svg(&mut cubic_svg, CURVE_ATTRIBUTES.to_string().replace(BLACK, RED), String::new(), String::new(), String::new());
 
 		let intersections_svg = self
 			.intersect(&cubic, Some(error))
@@ -533,9 +508,9 @@ impl WasmBezier {
 				bezier_curve.to_svg(
 					&mut curve_svg,
 					CURVE_ATTRIBUTES.to_string().replace(BLACK, &format!("hsl({}, 100%, 50%)", (40 * index))),
-					EMPTY_STRING.clone(),
-					EMPTY_STRING.clone(),
-					EMPTY_STRING.clone(),
+					String::new(),
+					String::new(),
+					String::new(),
 				);
 				curve_svg
 			})
@@ -555,9 +530,9 @@ impl WasmBezier {
 				bezier_curve.to_svg(
 					&mut curve_svg,
 					CURVE_ATTRIBUTES.to_string().replace(BLACK, &format!("hsl({}, 100%, 50%)", (40 * index))),
-					EMPTY_STRING.clone(),
-					EMPTY_STRING.clone(),
-					EMPTY_STRING.clone(),
+					String::new(),
+					String::new(),
+					String::new(),
 				);
 				curve_svg
 			})
@@ -634,16 +609,16 @@ impl WasmBezier {
 			2 => {
 				let points: [DVec2; 2] = js_points.into_serde().unwrap();
 				Bezier::from_linear_dvec2(points[0], points[1])
-			},
+			}
 			3 => {
 				let points: [DVec2; 3] = js_points.into_serde().unwrap();
 				Bezier::from_quadratic_dvec2(points[0], points[1], points[2])
-			},
+			}
 			4 => {
 				let points: [DVec2; 4] = js_points.into_serde().unwrap();
 				Bezier::from_cubic_dvec2(points[0], points[1], points[2], points[3])
-			},
-			_ => unreachable!()
+			}
+			_ => unreachable!(),
 		};
 
 		let joining_bezier: Bezier = self.0.join(other_bezier);
@@ -652,8 +627,8 @@ impl WasmBezier {
 			&mut joining_bezier_svg,
 			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
 			ANCHOR_ATTRIBUTES.to_string().replace(BLACK, RED),
-			EMPTY_STRING.clone(),
-			EMPTY_STRING.clone()
+			String::new(),
+			String::new(),
 		);
 
 		let bezier_svg = self.get_bezier_path();

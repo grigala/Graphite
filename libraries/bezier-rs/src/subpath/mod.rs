@@ -1,6 +1,7 @@
 mod core;
 mod lookup;
 mod structs;
+mod transform;
 pub use structs::*;
 
 use crate::Bezier;

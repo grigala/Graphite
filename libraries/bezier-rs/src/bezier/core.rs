@@ -203,7 +203,6 @@ impl Bezier {
 
 #[cfg(test)]
 mod tests {
-	use super::compare::compare_points;
 	use super::*;
 
 	#[test]
