@@ -48,13 +48,16 @@ impl Bezier {
 		}
 	}
 
-	/// Returns a normalized unit vector representing the tangent at the point designated by `t` on the curve.
-	pub fn tangent(&self, t: f64) -> DVec2 {
+	fn non_normalized_tangent(&self, t: f64) -> DVec2 {
 		match self.handles {
 			BezierHandles::Linear => self.end - self.start,
 			_ => self.derivative().unwrap().evaluate(t),
 		}
-		.normalize()
+	}
+
+	/// Returns a normalized unit vector representing the tangent at the point designated by `t` on the curve.
+	pub fn tangent(&self, t: f64) -> DVec2 {
+		self.non_normalized_tangent(t).normalize()
 	}
 
 	/// Returns a normalized unit vector representing the direction of the normal at the point designated by `t` on the curve.
@@ -328,6 +331,14 @@ impl Bezier {
 			.enumerate()
 			.flat_map(|(index, (subcurve, t_pair))| Bezier::intersections_between_vectors_of_curves(&[(subcurve, t_pair)], &combined_list2[index + 2..], error))
 			.collect()
+	}
+
+	/// Returns a cubic bezier which joins this and the provided bezier curves.
+	/// The resulting path formed by the Bezier curves is smooth up to the first derivative. 
+	pub fn join(&self, bezier2: Bezier) -> Bezier {
+		let handle1 = self.non_normalized_tangent(1.) / 3. + self.end;
+		let handle2 = bezier2.start - bezier2.non_normalized_tangent(0.) / 3.;
+		Bezier::from_cubic_dvec2(self.end, handle1, handle2, bezier2.start)
 	}
 }
 

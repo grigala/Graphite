@@ -28,6 +28,7 @@ pub enum WasmMaximizeArcs {
 }
 
 const SCALE_UNIT_VECTOR_FACTOR: f64 = 50.;
+const EMPTY_STRING: String = String::new();
 
 /// Wrapper of the `Bezier` struct to be used in JS.
 #[wasm_bindgen]
@@ -120,8 +121,7 @@ impl WasmBezier {
 
 	/// The wrapped return type is `Vec<Point>`.
 	pub fn get_points(&self) -> JsValue {
-		let points: Vec<Point> = self.0.get_points().map(|point| vec_to_point(&point)).collect();
-		to_js_value(points)
+		to_js_value(self.0.get_points().collect::<Vec<DVec2>>())
 	}
 
 	fn get_bezier_path(&self) -> String {
@@ -383,14 +383,13 @@ impl WasmBezier {
 	pub fn rotate(&self, angle: f64, pivot_x: f64, pivot_y: f64) -> String {
 		let original_bezier_svg = self.get_bezier_path();
 		let rotated_bezier = self.0.rotate_about_point(angle, DVec2::new(pivot_x, pivot_y));
-		let empty_string = String::new();
 		let mut rotated_bezier_svg = String::new();
 		rotated_bezier.to_svg(
 			&mut rotated_bezier_svg,
 			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			empty_string.clone(),
-			empty_string.clone(),
-			empty_string,
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
 		);
 		let pivot = draw_circle(pivot_x, pivot_y, 3., GRAY, 1.5, WHITE);
 
@@ -433,14 +432,13 @@ impl WasmBezier {
 
 		let bezier_curve_svg = self.get_bezier_path();
 
-		let empty_string = String::new();
 		let mut line_svg = String::new();
 		line.to_svg(
 			&mut line_svg,
 			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			empty_string.clone(),
-			empty_string.clone(),
-			empty_string,
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
 		);
 
 		let intersections_svg = self
@@ -460,14 +458,13 @@ impl WasmBezier {
 
 		let bezier_curve_svg = self.get_bezier_path();
 
-		let empty_string = String::new();
 		let mut quadratic_svg = String::new();
 		quadratic.to_svg(
 			&mut quadratic_svg,
 			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			empty_string.clone(),
-			empty_string.clone(),
-			empty_string,
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
 		);
 
 		let intersections_svg = self
@@ -487,14 +484,13 @@ impl WasmBezier {
 
 		let bezier_curve_svg = self.get_bezier_path();
 
-		let empty_string = String::new();
 		let mut cubic_svg = String::new();
 		cubic.to_svg(
 			&mut cubic_svg,
 			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
-			empty_string.clone(),
-			empty_string.clone(),
-			empty_string,
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone(),
 		);
 
 		let intersections_svg = self
@@ -526,7 +522,6 @@ impl WasmBezier {
 	}
 
 	pub fn reduce(&self) -> String {
-		let empty_string = String::new();
 		let original_curve_svg = self.get_bezier_path();
 		let bezier_curves_svg: String = self
 			.0
@@ -538,9 +533,9 @@ impl WasmBezier {
 				bezier_curve.to_svg(
 					&mut curve_svg,
 					CURVE_ATTRIBUTES.to_string().replace(BLACK, &format!("hsl({}, 100%, 50%)", (40 * index))),
-					empty_string.clone(),
-					empty_string.clone(),
-					empty_string.clone(),
+					EMPTY_STRING.clone(),
+					EMPTY_STRING.clone(),
+					EMPTY_STRING.clone(),
 				);
 				curve_svg
 			})
@@ -549,7 +544,6 @@ impl WasmBezier {
 	}
 
 	pub fn offset(&self, distance: f64) -> String {
-		let empty_string = String::new();
 		let original_curve_svg = self.get_bezier_path();
 		let bezier_curves_svg = self
 			.0
@@ -561,9 +555,9 @@ impl WasmBezier {
 				bezier_curve.to_svg(
 					&mut curve_svg,
 					CURVE_ATTRIBUTES.to_string().replace(BLACK, &format!("hsl({}, 100%, 50%)", (40 * index))),
-					empty_string.clone(),
-					empty_string.clone(),
-					empty_string.clone(),
+					EMPTY_STRING.clone(),
+					EMPTY_STRING.clone(),
+					EMPTY_STRING.clone(),
 				);
 				curve_svg
 			})
@@ -633,5 +627,36 @@ impl WasmBezier {
 			})
 			.fold(original_curve_svg, |acc, item| format!("{acc}{item}"));
 		wrap_svg_tag(arcs_svg)
+	}
+
+	pub fn join(&self, js_points: &JsValue) -> String {
+		let other_bezier: Bezier = match self.0.get_points().count() {
+			2 => {
+				let points: [DVec2; 2] = js_points.into_serde().unwrap();
+				Bezier::from_linear_dvec2(points[0], points[1])
+			},
+			3 => {
+				let points: [DVec2; 3] = js_points.into_serde().unwrap();
+				Bezier::from_quadratic_dvec2(points[0], points[1], points[2])
+			},
+			4 => {
+				let points: [DVec2; 4] = js_points.into_serde().unwrap();
+				Bezier::from_cubic_dvec2(points[0], points[1], points[2], points[3])
+			},
+			_ => unreachable!()
+		};
+
+		let joining_bezier: Bezier = self.0.join(other_bezier);
+		let mut joining_bezier_svg = String::new();
+		joining_bezier.to_svg(
+			&mut joining_bezier_svg,
+			CURVE_ATTRIBUTES.to_string().replace(BLACK, RED),
+			ANCHOR_ATTRIBUTES.to_string().replace(BLACK, RED),
+			EMPTY_STRING.clone(),
+			EMPTY_STRING.clone()
+		);
+
+		let bezier_svg = self.get_bezier_path();
+		wrap_svg_tag(format!("{bezier_svg}{joining_bezier_svg}"))
 	}
 }
