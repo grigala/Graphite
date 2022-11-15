@@ -38,6 +38,27 @@ impl Subpath {
 			.flat_map(|(index, bezier)| bezier.intersections(other, error).into_iter().map(|t| ((index as f64) + t) / number_of_curves).collect::<Vec<f64>>())
 			.collect()
 	}
+
+    /// Return the min and max corners that represent the bounding box of the subpath.
+	pub fn bounding_box(&self) -> Option<[DVec2; 2]> {
+        let mut bounding_boxes = self
+			.iter()
+			.map(|bezier| bezier.bounding_box())
+			.collect::<[DVec2; 2]>();
+        if bounding_boxes.len() == 0 {
+            // There is no bounding box for empty subpath.
+            None
+        } else {
+            let mut min_points = bounding_boxes[0][0];
+		    let mut max_points = bounding_boxes[0][1];
+            for bounding_box in bounding_boxes {
+                // We take min of mins and max of maxes.
+                min_points = min_points.min(bounding_box[0]);
+                max_points = max_points.max(bounding_box[1]);
+            }
+			Some([min_points, max_points])
+        }
+    }
 }
 
 #[cfg(test)]

@@ -564,6 +564,10 @@ export default defineComponent({
 							[175, 140],
 						]),
 				},
+				{
+					name: "Bounding Box",
+					callback: (subpath: WasmSubpathInstance): string => subpath.bounding_box(),
+				},
 			],
 		};
 	},
