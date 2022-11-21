@@ -1145,7 +1145,7 @@ export function defaultWidgetLayout(): WidgetLayout {
 	};
 }
 
-export type LayoutGroup = WidgetRow | WidgetColumn | WidgetSection;
+export type LayoutGroup = WidgetRow | WidgetColumn | WidgetSection | WidgetParameter;
 
 export type WidgetColumn = { columnWidgets: Widget[] };
 export function isWidgetColumn(layoutColumn: LayoutGroup): layoutColumn is WidgetColumn {
@@ -1160,6 +1160,11 @@ export function isWidgetRow(layoutRow: LayoutGroup): layoutRow is WidgetRow {
 export type WidgetSection = { name: string; layout: LayoutGroup[] };
 export function isWidgetSection(layoutRow: LayoutGroup): layoutRow is WidgetSection {
 	return Boolean((layoutRow as WidgetSection).layout);
+}
+
+export type WidgetParameter = { name: string; layout: LayoutGroup[] };
+export function isWidgetParameter(layoutRow: LayoutGroup): layoutRow is WidgetParameter {
+	return Boolean((layoutRow as WidgetParameter).layout);
 }
 
 // Unpacking rust types to more usable type in the frontend
@@ -1185,6 +1190,14 @@ function createWidgetLayout(widgetLayout: any[]): LayoutGroup[] {
 			const layout = createWidgetLayout(layoutType.section.layout);
 
 			const result: WidgetSection = { name, layout };
+			return result;
+		}
+
+		if (layoutType.parameter) {
+			const { name } = layoutType.parameter;
+			const layout = createWidgetLayout(layoutType.parameter.layout);
+
+			const result: WidgetParameter = { name, layout };
 			return result;
 		}
 

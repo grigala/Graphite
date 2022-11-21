@@ -18,8 +18,9 @@
 <script lang="ts">
 import { defineComponent, type PropType } from "vue";
 
-import { isWidgetColumn, isWidgetRow, isWidgetSection, type LayoutGroup, type WidgetLayout } from "@/wasm-communication/messages";
+import { isWidgetColumn, isWidgetRow, isWidgetSection, isWidgetParameter, type LayoutGroup, type WidgetLayout } from "@/wasm-communication/messages";
 
+import WidgetParameter from "@/components/widgets/groups/WidgetParameter.vue";
 import WidgetSection from "@/components/widgets/groups/WidgetSection.vue";
 import WidgetRow from "@/components/widgets/WidgetRow.vue";
 
@@ -32,6 +33,7 @@ export default defineComponent({
 			if (isWidgetColumn(layoutRow)) return WidgetRow;
 			if (isWidgetRow(layoutRow)) return WidgetRow;
 			if (isWidgetSection(layoutRow)) return WidgetSection;
+			if (isWidgetParameter(layoutRow)) return WidgetParameter;
 
 			throw new Error("Layout row type does not exist");
 		},
@@ -39,6 +41,7 @@ export default defineComponent({
 	components: {
 		WidgetRow,
 		WidgetSection,
+		WidgetParameter,
 	},
 });
 </script>
