@@ -89,9 +89,28 @@ fn number_range_widget(document_node: &DocumentNode, node_id: NodeId, index: usi
 				mode: if range_max.is_some() { NumberInputMode::Range } else { NumberInputMode::Increment },
 				range_min,
 				range_max,
-				unit,
+				unit:unit.clone(),
 				is_integer,
 				on_update: update_value(|x: &NumberInput| TaggedValue::F64(x.value.unwrap()), node_id, index),
+				..NumberInput::default()
+			})),
+		])
+	}
+	if let NodeInput::Value {
+		tagged_value: TaggedValue::U32(x),
+		exposed: false,
+	} = document_node.inputs[index]
+	{
+		widgets.extend_from_slice(&[
+			WidgetHolder::unrelated_seperator(),
+			WidgetHolder::new(Widget::NumberInput(NumberInput {
+				value: Some(x as f64),
+				mode: if range_max.is_some() { NumberInputMode::Range } else { NumberInputMode::Increment },
+				range_min,
+				range_max,
+				unit,
+				is_integer,
+				on_update: update_value(|x: &NumberInput| TaggedValue::U32(x.value.unwrap() as u32), node_id, index),
 				..NumberInput::default()
 			})),
 		])
@@ -138,6 +157,12 @@ pub fn multiply_opacity(document_node: &DocumentNode, node_id: NodeId) -> Vec<La
 
 pub fn posterize_properties(document_node: &DocumentNode, node_id: NodeId) -> Vec<LayoutGroup> {
 	let value = number_range_widget(document_node, node_id, 1, "Levels", Some(2.), Some(255.), "".into(), true);
+
+	vec![LayoutGroup::Row { widgets: value }]
+}
+
+pub fn quantize_properties(document_node: &DocumentNode, node_id: NodeId) -> Vec<LayoutGroup> {
+	let value = number_range_widget(document_node, node_id, 1, "Levels", Some(1.), Some(255.), "".into(), true);
 
 	vec![LayoutGroup::Row { widgets: value }]
 }
