@@ -163,8 +163,9 @@ pub fn posterize_properties(document_node: &DocumentNode, node_id: NodeId) -> Ve
 
 pub fn quantize_properties(document_node: &DocumentNode, node_id: NodeId) -> Vec<LayoutGroup> {
 	let value = number_range_widget(document_node, node_id, 1, "Levels", Some(1.), Some(255.), "".into(), true);
+	let index = number_range_widget(document_node, node_id, 2, "Fit Fn Index", Some(0.), Some(2.), "".into(), true);
 
-	vec![LayoutGroup::Row { widgets: value }]
+	vec![LayoutGroup::Row { widgets: value }, LayoutGroup::Row { widgets: index }]
 }
 
 pub fn exposure_properties(document_node: &DocumentNode, node_id: NodeId) -> Vec<LayoutGroup> {
