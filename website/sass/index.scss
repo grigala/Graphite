@@ -156,6 +156,7 @@
 		.carousel-controls {
 			display: flex;
 			align-items: center;
+			flex: 0 0 auto;
 
 			button {
 				outline: none;
@@ -231,9 +232,45 @@
 	}
 }
 
-#upcoming-tech {
+#graphite-today {
+	.video-embed {
+		margin: 40px 0;
+	}
+}
+
+#graphite-tomorrow {
+	img {
+		margin: 40px 0;
+	}
+}
+
+#disciplines {
+	align-items: center;
+
+	.informational-group {
+		margin-top: 40px;
+	}
+}
+
+#imaginate {
 	background-color: var(--color-navy);
 	color: var(--color-fog);
+
+	// .graphic {
+	// 	z-index: -1;
+	// }
+
+	// img {
+	// 	width: 140%;
+	// 	mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+	// 	-webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+	// }
+	
+	h1 {
+		display: block;
+		text-align: center;
+		margin-bottom: 20px;
+	}
 
 	a {
 		color: var(--color-mustard);
@@ -309,7 +346,7 @@
 				}
 
 				&.submit {
-					flex: 1 0 0;
+					flex: 1 0 auto;
 				}
 
 				label,
