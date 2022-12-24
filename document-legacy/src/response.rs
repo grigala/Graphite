@@ -21,6 +21,9 @@ pub enum DocumentResponse {
 	LayerChanged {
 		path: Vec<LayerId>,
 	},
+	RevokeBlob {
+		blob: String,
+	},
 }
 
 impl fmt::Display for DocumentResponse {
@@ -31,6 +34,7 @@ impl fmt::Display for DocumentResponse {
 			DocumentResponse::CreatedLayer { .. } => write!(f, "CreatedLayer"),
 			DocumentResponse::LayerChanged { .. } => write!(f, "LayerChanged"),
 			DocumentResponse::DeletedLayer { .. } => write!(f, "DeleteLayer"),
+			DocumentResponse::RevokeBlob { .. } => write!(f, "RevokeBlob"),
 		}
 	}
 }

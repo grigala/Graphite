@@ -137,6 +137,7 @@ impl MessageHandler<DocumentMessage, (u64, &InputPreprocessorMessageHandler, &Pe
 								);
 							}
 							DocumentResponse::DocumentChanged => responses.push_back(RenderDocument.into()),
+							DocumentResponse::RevokeBlob { blob } => responses.push_back(FrontendMessage::TriggerRevokeBlobUrl { url: blob.clone() }.into()),
 						};
 						responses.push_back(BroadcastEvent::DocumentIsDirty.into());
 					}
@@ -709,11 +710,12 @@ impl MessageHandler<DocumentMessage, (u64, &InputPreprocessorMessageHandler, &Pe
 							responses.push_back(FrontendMessage::TriggerRevokeBlobUrl { url: url.clone() }.into());
 						}
 					}
-					LayerDataType::Image(_) => {}
-					other => panic!(
-						"Setting blob URL for invalid layer type, which must be an `Imaginate`, `NodeGraphFrame` or `Image`. Found: `{:?}`",
-						other
-					),
+					LayerDataType::Image(image) => {
+						if let Some(url) = &image.blob_url {
+							responses.push_back(FrontendMessage::TriggerRevokeBlobUrl { url: url.clone() }.into());
+						}
+					}
+					other => panic!("Setting blob URL for invalid layer type, which must be an `Imaginate`, `NodeGraphFrame` or `Image`. Found: `{other:?}`",),
 				}
 
 				responses.push_back(

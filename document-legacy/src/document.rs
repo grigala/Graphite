@@ -825,12 +825,19 @@ impl Document {
 			}
 			Operation::SetLayerBlobUrl { layer_path, blob_url, resolution } => {
 				let layer = self.layer_mut(&layer_path).unwrap_or_else(|_| panic!("Blob url for invalid layer with path '{:?}'", layer_path));
+				let mut revoke_blob_url = Vec::new();
 				match &mut layer.data {
 					LayerDataType::Image(image) => {
+						if let Some(url) = image.blob_url.as_ref().filter(|&old| blob_url != *old) {
+							revoke_blob_url.push(DocumentResponse::RevokeBlob { blob: url.clone() });
+						}
 						image.blob_url = Some(blob_url);
 						image.dimensions = resolution.into();
 					}
 					LayerDataType::NodeGraphFrame(node_graph_frame) => {
+						if let Some(url) = node_graph_frame.blob_url.as_ref().filter(|&old| blob_url != *old) {
+							revoke_blob_url.push(DocumentResponse::RevokeBlob { blob: url.clone() });
+						}
 						node_graph_frame.blob_url = Some(blob_url);
 						node_graph_frame.dimensions = resolution.into();
 					}
@@ -838,19 +845,30 @@ impl Document {
 				}
 
 				self.mark_as_dirty(&layer_path)?;
-				Some([vec![DocumentChanged, LayerChanged { path: layer_path.clone() }], update_thumbnails_upstream(&layer_path)].concat())
+				Some(
+					[
+						vec![DocumentChanged, LayerChanged { path: layer_path.clone() }],
+						update_thumbnails_upstream(&layer_path),
+						revoke_blob_url,
+					]
+					.concat(),
+				)
 			}
 			Operation::ClearBlobURL { path } => {
 				let layer = self.layer_mut(&path).expect("Clearing node graph image for invalid layer");
+				let mut revoke_blob_changes = Vec::new();
 				match &mut layer.data {
 					LayerDataType::NodeGraphFrame(node_graph) => {
+						if let Some(url) = node_graph.blob_url.as_ref() {
+							revoke_blob_changes.push(DocumentResponse::RevokeBlob { blob: url.clone() });
+						}
 						node_graph.image_data = None;
 						node_graph.blob_url = None;
 					}
 					e => panic!("Incorrectly trying to clear the blob URL for layer of type {}", LayerDataTypeDiscriminant::from(&*e)),
 				}
 				self.mark_as_dirty(&path)?;
-				Some([vec![DocumentChanged, LayerChanged { path: path.clone() }], update_thumbnails_upstream(&path)].concat())
+				Some([vec![DocumentChanged, LayerChanged { path: path.clone() }], update_thumbnails_upstream(&path), revoke_blob_changes].concat())
 			}
 			Operation::SetPivot { layer_path, pivot } => {
 				let layer = self.layer_mut(&layer_path).expect("Setting pivot for invalid layer");
